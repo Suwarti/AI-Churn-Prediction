@@ -8,7 +8,6 @@ import {
   Sparkles, 
   RotateCcw, 
   Zap, 
-  ArrowRight, 
   ShieldAlert, 
   Info, 
   Lightbulb, 
@@ -605,14 +604,6 @@ export const ChurnPredictionTab: React.FC = () => {
                 <span className="text-[10px] text-slate-500 font-mono uppercase">Analyzed at:</span>
                 <div className="text-xs font-mono font-semibold text-slate-300">{predictionResult.timestamp}</div>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab('customer-value')}
-                className="py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-orange-500/20"
-              >
-                <span>Proceed to Step 2: Customer Value</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
             </div>
           </div>
 
