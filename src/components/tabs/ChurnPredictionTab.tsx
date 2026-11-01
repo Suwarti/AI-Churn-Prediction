@@ -22,6 +22,7 @@ import {
 import { useCustomer } from '../../context/CustomerContext';
 import { CustomerProfile } from '../../types';
 import { FormattedNumberInput } from '../common/FormattedNumberInput';
+import { ModuleNavigationControls } from '../common/ModuleNavigationControls';
 
 export const ChurnPredictionTab: React.FC = () => {
   const { 
@@ -184,6 +185,9 @@ export const ChurnPredictionTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Top Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="prediction" position="top" />
+
       {/* MANDATORY PREDICTION TRANSPARENCY NOTICE */}
       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3.5 shadow-sm">
         <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -746,35 +750,13 @@ export const ChurnPredictionTab: React.FC = () => {
                 </div>
               )}
 
-              {/* Next Steps Quick Links Bar */}
-              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('customer-value')}
-                  className="py-2.5 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <span>Step 2: Customer Value</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('decision-framework')}
-                  className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <span>Step 3: Decision Matrix</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('scenario-view')}
-                  className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <span>Step 4: Test Scenarios</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Bottom Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="prediction" position="bottom" />
     </div>
   );
 };

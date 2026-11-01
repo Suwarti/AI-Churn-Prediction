@@ -357,28 +357,31 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         return true; // 1. Always unlocked
       case 'customer-value':
         // 2. At least one successful churn prediction
-        return !!predictionResult;
+        return !!predictionResult || completedModules['prediction'];
       case 'decision-framework':
         // 3. Customer Value analysis completed
-        return !!predictionResult && completedModules['customer-value'];
+        return (
+          (!!predictionResult || completedModules['prediction']) &&
+          (!!customerValueAiAssessment || completedModules['customer-value'])
+        );
       case 'scenario-view':
         // 4. Decision Framework analysis completed
         return (
-          !!predictionResult && 
-          completedModules['customer-value'] && 
-          completedModules['decision-framework']
+          (!!predictionResult || completedModules['prediction']) &&
+          (!!customerValueAiAssessment || completedModules['customer-value']) &&
+          (!!finalDecisionAnalysis || completedModules['decision-framework'])
         );
       case 'roi-calculation':
         // 5. At least one scenario analysis completed
         return (
-          isTabUnlocked('scenario-view') && 
-          (!!scenarioPrediction || completedModules['scenario-view'])
+          isTabUnlocked('scenario-view') &&
+          (!!scenarioRecommendations || !!scenarioPrediction || completedModules['scenario-view'])
         );
       case 'generate-insight':
         // 6. ROI Calculation completed
         return (
-          isTabUnlocked('roi-calculation') && 
-          completedModules['roi-calculation']
+          isTabUnlocked('roi-calculation') &&
+          (!!automatedRoiAnalysis || completedModules['roi-calculation'])
         );
       default:
         return false;
@@ -489,8 +492,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCustomerField = <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => {
+    // Check if value actually changed
+    if (customerProfile[field] === value) {
+      return;
+    }
+
     setCustomerProfile(prev => ({ ...prev, [field]: value }));
-    // Invalidate downstream dependent results if key input changes
+
+    // Invalidate downstream dependent results only when upstream customer data actually changes
     if (predictionResult) {
       setPredictionResult(null);
       setCustomerValueAiAssessment(null);
@@ -501,15 +510,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setScenarioRecommendationsError(null);
       setAutomatedRoiAnalysis(null);
       setAutomatedRoiError(null);
-      setCompletedModules(prev => ({
-        ...prev,
+      setCompletedModules({
         prediction: false,
         'customer-value': false,
         'decision-framework': false,
         'scenario-view': false,
         'roi-calculation': false,
         'generate-insight': false,
-      }));
+      });
     }
   };
 

@@ -21,3 +21,64 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* =======================================================================
+   A4 PRINT & SAVE AS PDF STYLESHEET
+   ======================================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm;
+  }
+
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  html, body {
+    background-color: #020617 !important;
+    color: #f8fafc !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Exclude all application chrome, navigation, buttons, and footers */
+  header,
+  nav,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Executive Report container styling for print */
+  #executive-report-document {
+    background-color: #020617 !important;
+    color: #f8fafc !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+  }
+
+  /* Prevent page-break splits within individual report cards and sections */
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}

@@ -25,6 +25,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useCustomer, calculateCustomerValueFinancials } from '../../context/CustomerContext';
+import { ModuleNavigationControls } from '../common/ModuleNavigationControls';
 
 export const CustomerValueTab: React.FC = () => {
   const { 
@@ -127,8 +128,11 @@ export const CustomerValueTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Step Completion & Proceed Action Bar */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+      {/* Top Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="customer-value" position="top" />
+
+      {/* Step Header Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
             <Users className="w-5 h-5" />
@@ -136,7 +140,7 @@ export const CustomerValueTab: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white">
-                Step 2: Automated Customer Value Assessment
+                Automated Customer Value Assessment
               </h3>
               <span className="text-[10px] bg-orange-500/15 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5" />
@@ -154,14 +158,6 @@ export const CustomerValueTab: React.FC = () => {
             </p>
           </div>
         </div>
-
-        <button
-          onClick={handleCompleteAndProceed}
-          className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
-        >
-          <span>Proceed to Decision Framework</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Shared Customer Profile Attributes Badge Matrix (Read-Only) */}
@@ -497,7 +493,7 @@ export const CustomerValueTab: React.FC = () => {
                   className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5 hover:border-slate-700 transition-colors"
                 >
                   <div className="text-[10px] font-mono font-bold text-orange-400 uppercase">
-                    Action Step 0{idx + 1}
+                    Action Item 0{idx + 1}
                   </div>
                   <p className="text-xs text-slate-200 leading-relaxed font-medium">
                     {action}
@@ -566,6 +562,9 @@ export const CustomerValueTab: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Bottom Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="customer-value" position="bottom" />
     </div>
   );
 };

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useCustomer, calculateCustomerValueFinancials, determineFinalDecision } from '../../context/CustomerContext';
 import { RetentionScenarioItem } from '../../types';
+import { ModuleNavigationControls } from '../common/ModuleNavigationControls';
 
 export const ScenarioViewTab: React.FC = () => {
   const { 
@@ -226,8 +227,11 @@ export const ScenarioViewTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Step Completion & Proceed Action Bar */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+      {/* Top Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="scenario-view" position="top" />
+
+      {/* Step Header Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
             <SlidersHorizontal className="w-5 h-5" />
@@ -235,7 +239,7 @@ export const ScenarioViewTab: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white">
-                Step 4: Automated Retention Strategy Scenarios
+                Automated Retention Strategy Scenarios
               </h3>
               <span className="text-[10px] bg-orange-500/15 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5" />
@@ -253,14 +257,6 @@ export const ScenarioViewTab: React.FC = () => {
             </p>
           </div>
         </div>
-
-        <button
-          onClick={handleCompleteAndProceed}
-          className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
-        >
-          <span>Proceed to ROI Calculation</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Upstream Synthesis Snapshot (Read-Only) */}
@@ -493,6 +489,9 @@ export const ScenarioViewTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Bottom Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="scenario-view" position="bottom" />
     </div>
   );
 };

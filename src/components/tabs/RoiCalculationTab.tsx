@@ -19,6 +19,7 @@ import {
   Coins
 } from 'lucide-react';
 import { useCustomer } from '../../context/CustomerContext';
+import { ModuleNavigationControls } from '../common/ModuleNavigationControls';
 
 export const RoiCalculationTab: React.FC = () => {
   const { 
@@ -98,7 +99,7 @@ export const RoiCalculationTab: React.FC = () => {
             }}
             className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
           >
-            <span>Proceed to Upstream Step</span>
+            <span>Proceed to Upstream Module</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -116,7 +117,10 @@ export const RoiCalculationTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Step Completion & Proceed Action Bar */}
+      {/* Top Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="roi-calculation" position="top" />
+
+      {/* Step Header Banner */}
       <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
@@ -125,7 +129,7 @@ export const RoiCalculationTab: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white">
-                Step 5: Automated Retention ROI Calculation
+                Automated Retention ROI Calculation
               </h3>
               {completedModules['roi-calculation'] && (
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-medium flex items-center gap-1">
@@ -149,13 +153,6 @@ export const RoiCalculationTab: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${automatedRoiLoading ? 'animate-spin text-orange-400' : 'text-slate-400'}`} />
             <span>Recalculate</span>
-          </button>
-          <button
-            onClick={handleCompleteAndProceed}
-            className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
-          >
-            <span>Proceed to Generate Insight</span>
-            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -601,6 +598,9 @@ export const RoiCalculationTab: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Bottom Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="roi-calculation" position="bottom" />
     </div>
   );
 };

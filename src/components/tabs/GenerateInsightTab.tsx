@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Sparkles, 
-  RefreshCw, 
-  Copy, 
-  Check, 
   Printer, 
-  Download,
   AlertCircle, 
   Lock, 
   ArrowRight,
@@ -23,14 +19,12 @@ import {
   Building,
   Target,
   FileText,
-  AlertTriangle,
   Briefcase,
   ChevronRight
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { useCustomer } from '../../context/CustomerContext';
 import { ExecutiveReportSynthesis } from '../../types';
+import { ModuleNavigationControls } from '../common/ModuleNavigationControls';
 
 export const GenerateInsightTab: React.FC = () => {
   const { 
@@ -51,8 +45,6 @@ export const GenerateInsightTab: React.FC = () => {
   const [synthesis, setSynthesis] = useState<ExecutiveReportSynthesis | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const reportContainerRef = useRef<HTMLDivElement>(null);
 
@@ -176,61 +168,15 @@ export const GenerateInsightTab: React.FC = () => {
     }
   }, [missingPrerequisite, synthesis, isSynthesizing]);
 
-  // Export Action A: Copy Report text
-  const handleCopyReport = async () => {
-    if (!reportContainerRef.current) return;
-    try {
-      const text = reportContainerRef.current.innerText;
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch (err) {
-      console.error('Failed to copy report text', err);
+  // Single Primary PDF Action: Compile Report & Immediately Open Print / Save as PDF Dialog
+  const handlePrintOrSavePdf = async () => {
+    if (!synthesis && !isSynthesizing) {
+      await handleSynthesizeReport();
+      setTimeout(() => {
+        window.print();
+      }, 300);
+      return;
     }
-  };
-
-  // Export Action B: Download PDF (A4 format)
-  const handleDownloadPdf = async () => {
-    const element = reportContainerRef.current;
-    if (!element) return;
-
-    setIsDownloadingPdf(true);
-    try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#020617', // Match dark slate-950 theme
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * pageWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`Customer_Churn_Retention_Report_${reportId}.pdf`);
-    } catch (err) {
-      console.error('Failed to generate PDF:', err);
-    } finally {
-      setIsDownloadingPdf(false);
-    }
-  };
-
-  // Export Action C: Native Print / Save as PDF
-  const handlePrint = () => {
     window.print();
   };
 
@@ -279,16 +225,19 @@ export const GenerateInsightTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Top Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="generate-insight" position="top" />
+
       {/* Top Action & Export Toolbar (Hidden in browser print mode) */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
-            <FileText className="w-5 h-5" />
+      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm print:hidden">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 shadow-inner">
+            <FileText className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">
-                Step 6: Executive Summary &amp; Exportable Business Report
+              <h3 className="text-base font-bold text-white tracking-tight">
+                Executive Summary &amp; Exportable Business Report
               </h3>
               {completedModules['generate-insight'] && (
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-medium flex items-center gap-1">
@@ -297,59 +246,23 @@ export const GenerateInsightTab: React.FC = () => {
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mt-0.5">
               Consolidates all 6 modules into a single, management-ready retention proposal.
             </p>
           </div>
         </div>
 
-        {/* Action Buttons: Copy, PDF, Print, Refresh */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        {/* SINGLE PRIMARY ACTION BUTTON: PRINT / SAVE AS PDF */}
+        <div className="shrink-0 flex items-center">
           <button
-            onClick={handleCopyReport}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
-            title="Copy full text of the report"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300 font-bold">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 text-slate-400" />
-                <span>Copy Report</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={handleDownloadPdf}
-            disabled={isDownloadingPdf}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700 cursor-pointer disabled:opacity-50"
-            title="Download formatted A4 PDF file"
-          >
-            <Download className={`w-3.5 h-3.5 ${isDownloadingPdf ? 'animate-bounce text-orange-400' : 'text-slate-400'}`} />
-            <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
-            title="Open browser print dialog / Save as PDF"
-          >
-            <Printer className="w-3.5 h-3.5 text-slate-400" />
-            <span>Print / Save as PDF</span>
-          </button>
-
-          <button
-            onClick={handleSynthesizeReport}
+            type="button"
+            onClick={handlePrintOrSavePdf}
             disabled={isSynthesizing}
-            className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-orange-500/20 disabled:opacity-50"
-            title="Re-synthesize executive analysis with Gemini AI"
+            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-extrabold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-lg shadow-purple-600/35 ring-2 ring-purple-400/40 hover:shadow-purple-600/50 disabled:opacity-50"
+            title="Open browser print dialog to print or save as formatted A4 PDF"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSynthesizing ? 'animate-spin' : ''}`} />
-            <span>{isSynthesizing ? 'Synthesizing...' : 'Re-Synthesize'}</span>
+            <Printer className="w-5 h-5 text-white shrink-0 stroke-[2.2]" />
+            <span>{isSynthesizing ? 'Compiling Report...' : 'PRINT / SAVE AS PDF'}</span>
           </button>
         </div>
       </div>
@@ -455,7 +368,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 1: EXECUTIVE SUMMARY
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">1</span>
@@ -512,7 +425,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 2: CUSTOMER CHURN PREDICTION
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">2</span>
@@ -606,7 +519,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 3: CUSTOMER VALUE ASSESSMENT
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">3</span>
@@ -683,7 +596,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 4: DECISION FRAMEWORK
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">4</span>
@@ -738,7 +651,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 5: RETENTION SCENARIO ANALYSIS
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">5</span>
@@ -820,7 +733,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 6: ROI & FINANCIAL IMPACT
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">6</span>
@@ -889,7 +802,7 @@ export const GenerateInsightTab: React.FC = () => {
         {/* =======================================================================
             SECTION 7: FINAL STRATEGIC RECOMMENDATIONS
             ======================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-4 print-avoid-break">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-orange-500 text-slate-950 font-black text-xs flex items-center justify-center">7</span>
@@ -986,6 +899,9 @@ export const GenerateInsightTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Bottom Module Navigation Controls (Previous / Proceed) */}
+      <ModuleNavigationControls currentTab="generate-insight" position="bottom" />
     </div>
   );
 };

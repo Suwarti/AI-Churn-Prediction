@@ -27,7 +27,7 @@ function MainApp() {
       <HorizontalNavBar />
 
       {/* 3. Main Content Area (Full available viewport width with responsive max-w-7xl container) */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 print:p-0 print:m-0 print:max-w-none">
         {activeTab === 'prediction' && <ChurnPredictionTab />}
         {activeTab === 'customer-value' && <CustomerValueTab />}
         {activeTab === 'decision-framework' && <DecisionFrameworkTab />}

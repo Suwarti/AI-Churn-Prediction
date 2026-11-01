@@ -20,13 +20,13 @@ export const HorizontalNavBar: React.FC = () => {
     completedModules 
   } = useCustomer();
 
-  const tabs: { id: NavigationTab; label: string; icon: React.ElementType; step: number }[] = [
-    { id: 'prediction', label: 'Churn Prediction', icon: Activity, step: 1 },
-    { id: 'customer-value', label: 'Customer Value', icon: Users, step: 2 },
-    { id: 'decision-framework', label: 'Decision Framework', icon: GitBranch, step: 3 },
-    { id: 'scenario-view', label: 'Scenario View', icon: SlidersHorizontal, step: 4 },
-    { id: 'roi-calculation', label: 'ROI Calculation', icon: Calculator, step: 5 },
-    { id: 'generate-insight', label: 'Generate Insight', icon: Sparkles, step: 6 },
+  const tabs: { id: NavigationTab; label: string; icon: React.ElementType }[] = [
+    { id: 'prediction', label: 'Churn Prediction', icon: Activity },
+    { id: 'customer-value', label: 'Customer Value', icon: Users },
+    { id: 'decision-framework', label: 'Decision Framework', icon: GitBranch },
+    { id: 'scenario-view', label: 'Scenario View', icon: SlidersHorizontal },
+    { id: 'roi-calculation', label: 'ROI Calculation', icon: Calculator },
+    { id: 'generate-insight', label: 'Generate Insight', icon: Sparkles },
   ];
 
   return (
@@ -53,7 +53,7 @@ export const HorizontalNavBar: React.FC = () => {
                       : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'
                     : 'bg-slate-950/60 border-slate-800/50 text-slate-500 hover:bg-slate-900/40 hover:text-slate-400 opacity-65'
                 }`}
-                title={unlocked ? `${tab.step}. ${tab.label}` : `${tab.step}. ${tab.label} (Locked: Complete prerequisite first)`}
+                title={unlocked ? tab.label : `${tab.label} (Locked: Complete prerequisite first)`}
               >
                 {/* Status Indicator / Step Badge */}
                 <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-mono shrink-0 ${
