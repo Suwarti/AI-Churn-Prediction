@@ -1,0 +1,7 @@
+{
+  "name": "Customer Churn Intelligence Platform",
+  "description": "Enterprise customer churn analytics, ML-driven prediction, customer value segmentation, retention scenario simulation, ROI calculation, and executive business insights for Indosat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
