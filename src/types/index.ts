@@ -7,42 +7,34 @@ export type NavigationTab =
   | 'generate-insight';
 
 export interface CustomerProfile {
-  tenureMonths: number;
-  monthlyCharges: number;
-  age: number;
-  total_support_interactions: number;
-  hasPhoneService: 'No' | 'Yes';
-  hasInternetService: 'DSL' | 'Fiber optic' | 'No';
-  contractType: 'Month-to-month' | 'One year' | 'Two year';
-  paperlessBilling: 'No' | 'Yes';
+  tenureMonths: number | '';
+  monthlyCharges: number | '';
+  age: number | '';
+  total_support_interactions: number | '';
+  hasPhoneService: 'No' | 'Yes' | '';
+  hasInternetService: 'DSL' | 'Fiber optic' | 'No' | '';
+  contractType: 'Month-to-month' | 'One year' | 'Two year' | '';
+  paperlessBilling: 'No' | 'Yes' | '';
   paymentMethod: 
     | 'Bank transfer (automatic)' 
     | 'Credit card (automatic)' 
     | 'Electronic check' 
-    | 'Mailed check';
-  region: 
-    | 'Bandung' 
-    | 'JKT' 
-    | 'Jakarta' 
-    | 'Medan' 
-    | 'SBY' 
-    | 'Semarang' 
-    | 'Surabaya' 
-    | 'bandung' 
-    | 'bdg' 
-    | 'jakarta';
-  gender: 'Female' | 'Male';
-  partner: 'No' | 'Yes';
-  dependents: 'No' | 'Yes';
+    | 'Mailed check'
+    | '';
+  region: string;
+  gender: 'Female' | 'Male' | '';
+  partner: 'No' | 'Yes' | '';
+  dependents: 'No' | 'Yes' | '';
 }
 
 export interface PredictionResult {
   churn_probability: number;
-  predicted_churn: number;
+  predicted_churn: 0 | 1;
   prediction_label: 'Churn' | 'Non-Churn';
   risk_level: 'Low' | 'Medium' | 'High';
-  prediction_horizon: string;
-  classification_threshold: number;
+  key_risk_factors: string[];
+  retention_recommendations: string[];
+  prediction_explanation: string;
   timestamp: string;
   isScenario?: boolean;
 }
@@ -60,6 +52,23 @@ export interface ModelApiStatus {
     threshold: number;
     horizon: string;
   };
+}
+
+export interface ModuleCompletionState {
+  prediction: boolean;
+  'customer-value': boolean;
+  'decision-framework': boolean;
+  'scenario-view': boolean;
+  'roi-calculation': boolean;
+  'generate-insight': boolean;
+}
+
+export interface PrerequisiteInfo {
+  targetTab: NavigationTab;
+  targetTitle: string;
+  requiredTab: NavigationTab;
+  requiredTitle: string;
+  reason: string;
 }
 
 export interface ValueSegmentationSettings {

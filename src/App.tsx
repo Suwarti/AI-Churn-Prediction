@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { CustomerProvider, useCustomer } from './context/CustomerContext';
-import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
-import { ModelStatusModal } from './components/common/ModelStatusModal';
+import { HorizontalNavBar } from './components/layout/HorizontalNavBar';
+import { PrerequisiteModal } from './components/common/PrerequisiteModal';
 import { ChurnPredictionTab } from './components/tabs/ChurnPredictionTab';
 import { CustomerValueTab } from './components/tabs/CustomerValueTab';
 import { DecisionFrameworkTab } from './components/tabs/DecisionFrameworkTab';
@@ -17,38 +17,41 @@ import { GenerateInsightTab } from './components/tabs/GenerateInsightTab';
 
 function MainApp() {
   const { activeTab } = useCustomer();
-  const [isModelModalOpen, setIsModelModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-row overflow-x-hidden">
-      {/* Permanent Left-Side Vertical Sidebar */}
-      <Sidebar onOpenModelModal={() => setIsModelModalOpen(true)} />
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      {/* 1. Full-Width Header */}
+      <Header />
 
-      {/* Main Content Area on the RIGHT side of the sidebar */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* Header Bar */}
-        <Header onOpenModelModal={() => setIsModelModalOpen(true)} />
+      {/* 2. Full-Width Horizontal Navigation Tabs */}
+      <HorizontalNavBar />
 
-        {/* Tab Content Body */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-          {activeTab === 'prediction' && (
-            <ChurnPredictionTab onOpenModelModal={() => setIsModelModalOpen(true)} />
-          )}
-          {activeTab === 'customer-value' && <CustomerValueTab />}
-          {activeTab === 'decision-framework' && <DecisionFrameworkTab />}
-          {activeTab === 'scenario-view' && (
-            <ScenarioViewTab onOpenModelModal={() => setIsModelModalOpen(true)} />
-          )}
-          {activeTab === 'roi-calculation' && <RoiCalculationTab />}
-          {activeTab === 'generate-insight' && <GenerateInsightTab />}
-        </main>
-      </div>
+      {/* 3. Main Content Area (Full available viewport width with responsive max-w-7xl container) */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        {activeTab === 'prediction' && <ChurnPredictionTab />}
+        {activeTab === 'customer-value' && <CustomerValueTab />}
+        {activeTab === 'decision-framework' && <DecisionFrameworkTab />}
+        {activeTab === 'scenario-view' && <ScenarioViewTab />}
+        {activeTab === 'roi-calculation' && <RoiCalculationTab />}
+        {activeTab === 'generate-insight' && <GenerateInsightTab />}
+      </main>
 
-      {/* Model Status & API Configuration Modal */}
-      <ModelStatusModal
-        isOpen={isModelModalOpen}
-        onClose={() => setIsModelModalOpen(false)}
-      />
+      {/* Footer */}
+      <footer className="w-full border-t border-slate-900 bg-slate-950 py-5 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-300">AI Churn Prediction</span>
+            <span>&bull;</span>
+            <span className="text-slate-400">For Smarter Customer Retention Strategies</span>
+          </div>
+          <div className="font-mono text-[11px] text-slate-500">
+            Enterprise Decision Support Platform &bull; Powered by Google Gemini AI
+          </div>
+        </div>
+      </footer>
+
+      {/* Prerequisite Instruction Modal when clicking locked tabs */}
+      <PrerequisiteModal />
     </div>
   );
 }

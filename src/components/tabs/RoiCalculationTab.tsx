@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Calculator, 
   DollarSign, 
@@ -6,19 +6,26 @@ import {
   Percent, 
   Users, 
   Clock, 
-  HelpCircle, 
   Info, 
   RotateCcw, 
   ArrowUpRight, 
-  Target, 
-  ShieldCheck,
+  Bookmark,
   CheckCircle2,
-  Bookmark
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { useCustomer } from '../../context/CustomerContext';
 
 export const RoiCalculationTab: React.FC = () => {
-  const { roiAssumptions, updateRoiAssumptions, roiResults } = useCustomer();
+  const { 
+    roiAssumptions, 
+    updateRoiAssumptions, 
+    roiResults,
+    isTabUnlocked,
+    completedModules,
+    completeModule,
+    setActiveTab
+  } = useCustomer();
 
   const formatIDR = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -28,12 +35,42 @@ export const RoiCalculationTab: React.FC = () => {
     }).format(val);
   };
 
-  // Preset Campaign Scenarios for Indosat Enterprise Marketing
+  // Guard: Prerequisite check
+  if (!isTabUnlocked('roi-calculation')) {
+    return (
+      <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Lock className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+            Prerequisite Required
+          </span>
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            Please complete Scenario View first
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            The ROI Calculation model requires at least one completed what-if scenario analysis to assess potential churn reduction before modeling campaign economics.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => setActiveTab('scenario-view')}
+            className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+          >
+            <span>Go to Scenario View</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const CAMPAIGN_PRESETS = [
     {
       id: 'digital-bill-rebate',
       name: 'Digital Bill Rebate & Vouchers',
-      description: 'Automated SMS/app push with 15% discount for 3 months to high-risk month-to-month users.',
+      description: 'Automated SMS/app push with 15% discount for 3 months to high-risk month-to-month subscribers.',
       targetCustomers: 8000,
       successRate: 24,
       avgMonthly: 380000,
@@ -43,7 +80,7 @@ export const RoiCalculationTab: React.FC = () => {
     {
       id: 'vip-call-concierge',
       name: 'Dedicated VIP Retention Concierge',
-      description: 'Personalized outbound phone calls and dedicated contract renegotiation for high-value subscribers.',
+      description: 'Personalized outbound phone calls and dedicated contract renegotiation for high-value accounts.',
       targetCustomers: 2500,
       successRate: 42,
       avgMonthly: 750000,
@@ -61,8 +98,8 @@ export const RoiCalculationTab: React.FC = () => {
       costPerCustomer: 90000,
     },
     {
-      id: 'broadband-bundle-deal',
-      name: 'Triple-Play Bundle Protection',
+      id: 'triple-play-bundle',
+      name: 'Triple-Play Protection Package',
       description: 'Bundle mobile voice + home fiber with loyalty lock-in rewards.',
       targetCustomers: 6500,
       successRate: 29,
@@ -92,23 +129,59 @@ export const RoiCalculationTab: React.FC = () => {
     });
   };
 
-  // Sensitivity analysis table rows (varying success rate from 15% to 45%)
+  const handleCompleteAndProceed = () => {
+    completeModule('roi-calculation', true);
+  };
+
   const sensitivitySuccessRates = [15, 20, 25, 30, 35, 40, 45];
 
   return (
     <div className="space-y-6">
-      {/* Disclaimer / Assumption Disclosure */}
+      {/* Step Completion & Proceed Action Bar */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+            <Calculator className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white">
+                Step 5: Retention Campaign ROI Calculation
+              </h3>
+              {completedModules['roi-calculation'] && (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.2 rounded font-mono font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Completed
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">
+              Confirm campaign economics and net benefit to unlock AI Executive Business Insights.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleCompleteAndProceed}
+          className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
+        >
+          <span>Confirm ROI Model &amp; Proceed to Insights</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Assumptions Disclosure Notice */}
       <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-start gap-3.5">
-        <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+        <Info className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
         <div className="text-xs text-slate-300 space-y-1">
-          <div className="font-semibold text-white flex items-center gap-2">
-            <span>Customer Retention Campaign Financial Impact Model</span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
-              Estimated Projections
+          <div className="font-bold text-white flex items-center gap-2">
+            <span>Customer Retention Campaign ROI Calculator</span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-orange-500/10 text-orange-300 border border-orange-500/20 font-mono">
+              Business Assumptions
             </span>
           </div>
           <p className="leading-relaxed">
-            All calculations are estimated financial projections based on user-defined operational assumptions, <strong className="text-slate-100">not guaranteed realized revenue</strong>. Zero campaign costs and edge parameters are handled securely to prevent division-by-zero errors.
+            All input parameters below represent <strong className="text-white">business planning assumptions</strong>, not actual observed outcomes. The model estimates the financial return of targeted retention campaigns based on retention success rates and incremental subscriber lifetime.
           </p>
         </div>
       </div>
@@ -116,13 +189,13 @@ export const RoiCalculationTab: React.FC = () => {
       {/* Preset Strategy Cards */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-400">
-          <span className="font-semibold text-slate-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-            <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-            Preset Indosat Retention Campaigns
+          <span className="font-bold text-slate-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <Bookmark className="w-3.5 h-3.5 text-orange-400" />
+            Preset Retention Campaign Scenarios
           </span>
           <button
             onClick={resetDefaults}
-            className="hover:text-white flex items-center gap-1 transition-colors"
+            className="hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3 h-3 text-slate-400" />
             Reset Default Values
@@ -134,9 +207,9 @@ export const RoiCalculationTab: React.FC = () => {
             <button
               key={preset.id}
               onClick={() => applyPreset(preset)}
-              className="p-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 text-left transition-all group space-y-2 cursor-pointer"
+              className="p-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-orange-500/40 text-left transition-all group space-y-2 cursor-pointer"
             >
-              <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
+              <div className="text-xs font-bold text-white group-hover:text-orange-300 transition-colors">
                 {preset.name}
               </div>
               <p className="text-[11px] text-slate-400 line-clamp-2">
@@ -144,20 +217,20 @@ export const RoiCalculationTab: React.FC = () => {
               </p>
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-800/80">
                 <span>{preset.targetCustomers.toLocaleString()} users</span>
-                <span className="text-amber-400 font-bold">{preset.successRate}% rate</span>
+                <span className="text-orange-400 font-bold">{preset.successRate}% rate</span>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Financial KPI Cards (4 metrics required) */}
+      {/* Financial KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Metric 1: Estimated Revenue Retained */}
+        {/* Metric 1: Revenue Retained */}
         <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">
-              Estimated Revenue Retained
+              Revenue Retained
             </span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
               <TrendingUp className="w-4 h-4" />
@@ -171,11 +244,11 @@ export const RoiCalculationTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Metric 2: Total Campaign Cost */}
+        {/* Metric 2: Campaign Cost */}
         <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">
-              Total Campaign Cost
+              Campaign Cost
             </span>
             <div className="p-2 rounded-xl bg-red-500/10 text-red-400">
               <DollarSign className="w-4 h-4" />
@@ -205,7 +278,7 @@ export const RoiCalculationTab: React.FC = () => {
             {formatIDR(roiResults.netBenefit)}
           </div>
           <div className="text-[11px] text-slate-400">
-            Retained Revenue minus Total Campaign Cost
+            Revenue Retained minus Campaign Cost
           </div>
         </div>
 
@@ -213,43 +286,43 @@ export const RoiCalculationTab: React.FC = () => {
         <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">
-              Return on Investment (ROI)
+              Campaign ROI (%)
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+            <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400">
               <Percent className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-black font-mono text-amber-400 tracking-tight">
+          <div className="text-3xl font-black font-mono text-orange-400 tracking-tight">
             {roiResults.roiPercentage.toFixed(1)}%
           </div>
           <div className="text-[11px] text-slate-400">
-            {roiAssumptions.costPerCustomer === 0 ? 'Zero cost campaign (inf ROI)' : 'Net Benefit / Total Cost × 100'}
+            (Net Benefit / Campaign Cost) &times; 100
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Inputs (5 items) and Visual Comparisons */}
+      {/* Main Grid: Inputs (5 items) and Comparison Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Editable Assumptions Form (6 cols) */}
+        {/* Left: Input Assumptions (6 cols) */}
         <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div>
               <h4 className="text-sm font-bold text-white">
-                Campaign Model Input Assumptions
+                Campaign Input Parameters
               </h4>
               <p className="text-xs text-slate-400">
-                Adjust values to simulate customer retention campaign financial economics
+                Adjust business assumptions to evaluate campaign economics
               </p>
             </div>
-            <span className="text-[10px] font-mono text-amber-400">5 Inputs</span>
+            <span className="text-[10px] font-mono text-orange-400 font-bold">5 Assumptions</span>
           </div>
 
           <div className="space-y-4 text-xs">
-            {/* 1. Targeted Customers */}
+            {/* 1. Number of targeted customers */}
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <label className="text-slate-300">1. Number of Targeted Customers</label>
-                <span className="font-mono text-amber-400">
+                <span className="font-mono text-orange-400">
                   {roiAssumptions.targetedCustomers.toLocaleString()} subscribers
                 </span>
               </div>
@@ -262,16 +335,13 @@ export const RoiCalculationTab: React.FC = () => {
                 onChange={(e) => updateRoiAssumptions({ targetedCustomers: Math.max(1, Number(e.target.value)) })}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
               />
-              <div className="flex justify-between text-[10px] text-slate-500">
-                <span>Range: 100 - 500,000</span>
-              </div>
             </div>
 
-            {/* 2. Expected Retention Success Rate (%) */}
+            {/* 2. Expected retention success rate */}
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <label className="text-slate-300">2. Expected Retention Success Rate (%)</label>
-                <span className="font-mono text-amber-400">{roiAssumptions.retentionSuccessRate}%</span>
+                <span className="font-mono text-orange-400">{roiAssumptions.retentionSuccessRate}%</span>
               </div>
               <input
                 type="range"
@@ -280,7 +350,7 @@ export const RoiCalculationTab: React.FC = () => {
                 step={1}
                 value={roiAssumptions.retentionSuccessRate}
                 onChange={(e) => updateRoiAssumptions({ retentionSuccessRate: Number(e.target.value) })}
-                className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-orange-500"
               />
               <div className="flex justify-between text-[10px] text-slate-500 font-mono">
                 <span>1% (Conservative)</span>
@@ -289,11 +359,11 @@ export const RoiCalculationTab: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. Average Monthly Charges (IDR) */}
+            {/* 3. Average monthly charges */}
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <label className="text-slate-300">3. Average Monthly Charges (IDR)</label>
-                <span className="font-mono text-amber-400">{formatIDR(roiAssumptions.avgMonthlyCharges)}</span>
+                <span className="font-mono text-orange-400">{formatIDR(roiAssumptions.avgMonthlyCharges)}</span>
               </div>
               <input
                 type="number"
@@ -306,11 +376,11 @@ export const RoiCalculationTab: React.FC = () => {
               />
             </div>
 
-            {/* 4. Expected Retained Customer Lifetime (Months) */}
+            {/* 4. Estimated additional retention months */}
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
-                <label className="text-slate-300">4. Expected Retained Lifetime (Months)</label>
-                <span className="font-mono text-amber-400">{roiAssumptions.retainedLifetimeMonths} Months</span>
+                <label className="text-slate-300">4. Estimated Additional Retention Months</label>
+                <span className="font-mono text-orange-400">{roiAssumptions.retainedLifetimeMonths} Months</span>
               </div>
               <input
                 type="number"
@@ -322,11 +392,11 @@ export const RoiCalculationTab: React.FC = () => {
               />
             </div>
 
-            {/* 5. Retention Campaign Cost per Customer (IDR) */}
+            {/* 5. Campaign cost per customer */}
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
-                <label className="text-slate-300">5. Campaign Cost per Customer (IDR)</label>
-                <span className="font-mono text-amber-400">{formatIDR(roiAssumptions.costPerCustomer)}</span>
+                <label className="text-slate-300">5. Campaign Cost Per Customer (IDR)</label>
+                <span className="font-mono text-orange-400">{formatIDR(roiAssumptions.costPerCustomer)}</span>
               </div>
               <input
                 type="number"
@@ -338,7 +408,7 @@ export const RoiCalculationTab: React.FC = () => {
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
               />
               <div className="flex justify-between text-[10px] text-slate-500">
-                <span>Set to 0 for no-marginal-cost digital email/push channels</span>
+                <span>Set to 0 for zero-cost automated digital campaigns</span>
               </div>
             </div>
           </div>
@@ -354,11 +424,10 @@ export const RoiCalculationTab: React.FC = () => {
               <span className="text-[10px] font-mono text-slate-400">Financial Balance</span>
             </div>
 
-            {/* Visual Bar Comparison */}
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-slate-300">Estimated Retained Revenue</span>
+                  <span className="font-semibold text-slate-300">Revenue Retained</span>
                   <span className="font-mono font-bold text-emerald-400">
                     {formatIDR(roiResults.estimatedRevenueRetained)}
                   </span>
@@ -373,7 +442,7 @@ export const RoiCalculationTab: React.FC = () => {
 
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-slate-300">Total Campaign Cost</span>
+                  <span className="font-semibold text-slate-300">Campaign Cost</span>
                   <span className="font-mono font-bold text-red-400">
                     {formatIDR(roiResults.totalCampaignCost)}
                   </span>
@@ -391,7 +460,7 @@ export const RoiCalculationTab: React.FC = () => {
                   />
                 </div>
                 <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
-                  <span>Cost Ratio:</span>
+                  <span>Cost Share:</span>
                   <span className="font-mono">
                     {roiResults.estimatedRevenueRetained > 0
                       ? `${((roiResults.totalCampaignCost / roiResults.estimatedRevenueRetained) * 100).toFixed(1)}% of retained revenue`
@@ -401,16 +470,15 @@ export const RoiCalculationTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Formula Reference Box */}
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300 space-y-2 font-mono">
-              <div className="font-bold text-amber-400 uppercase tracking-wider text-[10px] font-sans">
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300 space-y-1.5 font-mono">
+              <div className="font-bold text-orange-400 uppercase tracking-wider text-[10px] font-sans">
                 Formulas Applied:
               </div>
-              <div className="space-y-1 text-slate-400 text-[10px]">
-                <div>&bull; Retained Rev = Targeted × Success Rate × Avg Monthly × Retained Lifetime</div>
-                <div>&bull; Total Cost = Targeted × Cost per Customer</div>
-                <div>&bull; Net Benefit = Retained Rev - Total Cost</div>
-                <div>&bull; ROI (%) = (Net Benefit / Total Cost) × 100</div>
+              <div className="text-[10px] text-slate-400 space-y-1">
+                <div>&bull; Revenue Retained = Targeted Customers &times; Retention Success Rate &times; Monthly Charges &times; Additional Retention Months</div>
+                <div>&bull; Campaign Cost = Targeted Customers &times; Campaign Cost Per Customer</div>
+                <div>&bull; Net Benefit = Revenue Retained - Campaign Cost</div>
+                <div>&bull; ROI (%) = (Net Benefit / Campaign Cost) &times; 100</div>
               </div>
             </div>
           </div>
@@ -421,31 +489,31 @@ export const RoiCalculationTab: React.FC = () => {
               <span>Investment Assessment:</span>
             </div>
             <p className="text-[11px] text-slate-400">
-              For every <strong className="text-white">Rp 100.000</strong> invested in this campaign, Indosat is projected to retain{' '}
+              For every <strong className="text-white">Rp 100.000</strong> invested, the business estimates recovering{' '}
               <strong className="text-emerald-400 font-mono">
                 {roiResults.totalCampaignCost > 0
                   ? formatIDR((roiResults.estimatedRevenueRetained / roiResults.totalCampaignCost) * 100000)
                   : 'Infinite'}
               </strong>{' '}
-              in retained telecom subscriber revenue.
+              in retained telecom subscriber cash flow.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Sensitivity Matrix Table (Success Rate vs Net Benefit & ROI) */}
+      {/* Sensitivity Analysis Table */}
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h4 className="text-sm font-bold text-white">
-              Campaign Success Rate Sensitivity Analysis Table
+              Success Rate Sensitivity Analysis Matrix
             </h4>
             <p className="text-xs text-slate-400">
-              Evaluates how variance in retention success rates alters Net Financial Benefit and ROI%
+              Evaluates how variations in retention success rates impact Net Benefit and ROI%
             </p>
           </div>
           <span className="text-[10px] font-mono bg-slate-800 text-slate-400 px-2 py-1 rounded">
-            Fixed Cost: {formatIDR(roiResults.totalCampaignCost)}
+            Campaign Cost: {formatIDR(roiResults.totalCampaignCost)}
           </span>
         </div>
 
@@ -454,12 +522,12 @@ export const RoiCalculationTab: React.FC = () => {
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                 <th className="py-3 px-4">Success Rate</th>
-                <th className="py-3 px-4">Retained Users</th>
-                <th className="py-3 px-4">Estimated Revenue Retained</th>
-                <th className="py-3 px-4">Total Campaign Cost</th>
+                <th className="py-3 px-4">Retained Subscribers</th>
+                <th className="py-3 px-4">Revenue Retained</th>
+                <th className="py-3 px-4">Campaign Cost</th>
                 <th className="py-3 px-4">Net Benefit</th>
-                <th className="py-3 px-4">Projected ROI %</th>
-                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">ROI %</th>
+                <th className="py-3 px-4">Financial Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -476,14 +544,14 @@ export const RoiCalculationTab: React.FC = () => {
                   <tr
                     key={rate}
                     className={`transition-colors ${
-                      isCurrent ? 'bg-amber-500/10 font-bold border-l-2 border-amber-500' : 'hover:bg-slate-800/40'
+                      isCurrent ? 'bg-orange-500/10 font-bold border-l-2 border-orange-500' : 'hover:bg-slate-800/40'
                     }`}
                   >
                     <td className="py-3.5 px-4 font-sans text-white flex items-center gap-1.5">
                       <span>{rate}%</span>
                       {isCurrent && (
-                        <span className="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-black">
-                          ACTIVE
+                        <span className="text-[9px] bg-orange-500 text-slate-950 px-1.5 py-0.2 rounded font-black">
+                          CURRENT
                         </span>
                       )}
                     </td>
@@ -499,7 +567,7 @@ export const RoiCalculationTab: React.FC = () => {
                     <td className={`py-3.5 px-4 ${net >= 0 ? 'text-white' : 'text-red-400'}`}>
                       {formatIDR(net)}
                     </td>
-                    <td className="py-3.5 px-4 text-amber-400 font-bold">
+                    <td className="py-3.5 px-4 text-orange-400 font-bold">
                       {roi.toFixed(1)}%
                     </td>
                     <td className="py-3.5 px-4 font-sans">

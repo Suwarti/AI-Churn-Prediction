@@ -1,29 +1,30 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { 
   CustomerProfile, 
   PredictionResult, 
-  ModelApiStatus, 
   NavigationTab,
   ValueSegmentationSettings,
   DecisionQuadrantConfig,
   RoiAssumptions,
-  RoiResults
+  RoiResults,
+  ModuleCompletionState,
+  PrerequisiteInfo
 } from '../types';
 
 export const INITIAL_CUSTOMER_PROFILE: CustomerProfile = {
-  tenureMonths: 14,
-  monthlyCharges: 445000,
-  age: 36,
-  total_support_interactions: 0,
-  hasPhoneService: 'Yes',
-  hasInternetService: 'Fiber optic',
-  contractType: 'Month-to-month',
-  paperlessBilling: 'Yes',
-  paymentMethod: 'Electronic check',
-  region: 'Jakarta',
-  gender: 'Female',
-  partner: 'No',
-  dependents: 'No',
+  tenureMonths: '',
+  monthlyCharges: '',
+  age: '',
+  total_support_interactions: '',
+  hasPhoneService: '',
+  hasInternetService: '',
+  contractType: '',
+  paperlessBilling: '',
+  paymentMethod: '',
+  region: '',
+  gender: '',
+  partner: '',
+  dependents: '',
 };
 
 const DEFAULT_QUADRANTS: Record<string, DecisionQuadrantConfig> = {
@@ -34,13 +35,13 @@ const DEFAULT_QUADRANTS: Record<string, DecisionQuadrantConfig> = {
     riskCategory: 'High Risk',
     valueCategory: 'High Value',
     priorityLevel: 'Immediate (P0)',
-    recommendedAction: 'Deploy dedicated retention team with personalized contract discount and priority support SLA.',
-    businessExplanation: 'High-value subscribers at high churn risk represent the greatest revenue vulnerability. Immediate high-touch intervention is justified by customer lifetime value.',
+    recommendedAction: 'Deploy high-touch retention specialist with personalized contract renewal incentive and priority SLA.',
+    businessExplanation: 'High-value subscribers at high churn risk represent critical revenue exposure. High-touch intervention is economically justified by customer lifetime value.',
     tactics: [
-      'Personalized retention offers',
-      'Dedicated customer engagement manager',
-      'Priority customer support routing',
-      'Flexible contract re-negotiation & speed bump bonus'
+      'Personalized retention discount on 12-month renewal',
+      'Dedicated customer success account manager',
+      'Priority customer care routing',
+      'Free bandwidth speed-boost bonus'
     ]
   },
   'high-risk-low-value': {
@@ -50,29 +51,29 @@ const DEFAULT_QUADRANTS: Record<string, DecisionQuadrantConfig> = {
     riskCategory: 'High Risk',
     valueCategory: 'Low Value',
     priorityLevel: 'High (P1)',
-    recommendedAction: 'Automated digital retention outreach with light-touch incentives to preserve margins.',
-    businessExplanation: 'Subscribers have high churn propensity but modest monthly contributions. Retention investments must remain digital and unit-cost controlled.',
+    recommendedAction: 'Automated digital retention outreach with low marginal-cost incentives to preserve operational margins.',
+    businessExplanation: 'Subscribers have elevated churn probability but modest monthly billing. Retention investments must remain automated and unit-cost controlled.',
     tactics: [
-      'Automated retention email & SMS campaigns',
-      'Targeted promotions & app-exclusive data vouchers',
-      'Digital engagement & self-service troubleshooting',
-      'Feedback survey to identify systemic friction'
+      'Automated in-app push and SMS renewal alerts',
+      'App-exclusive data voucher incentives',
+      'Self-service digital troubleshooting assistance',
+      'Digital feedback survey to diagnose friction points'
     ]
   },
   'low-risk-high-value': {
     id: 'low-risk-high-value',
-    title: 'Loyalty Program',
-    defaultTitle: 'Loyalty Program',
+    title: 'Loyalty Enhancement',
+    defaultTitle: 'Loyalty Enhancement',
     riskCategory: 'Low Risk',
     valueCategory: 'High Value',
     priorityLevel: 'Medium (P2)',
-    recommendedAction: 'Enrol in Indosat VIP loyalty rewards and cross-sell premium ecosystem products.',
-    businessExplanation: 'Stable, high-margin customers who form the revenue core of the business. Focus on delight, relationship building, and brand advocacy.',
+    recommendedAction: 'Enroll in VIP loyalty tier, proactive relationship check-ins, and exclusive ecosystem perks.',
+    businessExplanation: 'Stable, high-contribution customers who form the revenue core of the business. Focus on relationship building, delight, and cross-selling.',
     tactics: [
-      'Indosat VIP loyalty tier and tier perks',
-      'Exclusive lifestyle and telecom benefits',
-      'Early access to 5G / Fiber upgrades',
-      'Proactive relationship check-ins'
+      'Telecommunications VIP loyalty tier benefits',
+      'Exclusive device upgrade subsidies',
+      'Early access to 5G and premium streaming bundles',
+      'Annual account review with customer manager'
     ]
   },
   'low-risk-low-value': {
@@ -82,13 +83,13 @@ const DEFAULT_QUADRANTS: Record<string, DecisionQuadrantConfig> = {
     riskCategory: 'Low Risk',
     valueCategory: 'Low Value',
     priorityLevel: 'Standard (P3)',
-    recommendedAction: 'Maintain steady digital communications and monitor for usage milestone upgrade opportunities.',
-    businessExplanation: 'Stable baseline customers with low churn risk. Maintain operational efficiency and identify organic opportunities to upsell higher bandwidth tiers.',
+    recommendedAction: 'Maintain steady digital communication and identify organic upsell milestones.',
+    businessExplanation: 'Stable baseline accounts with low churn risk. Maintain automated operational efficiency and trigger organic bandwidth tier upgrade prompts.',
     tactics: [
-      'Automated lifecycle & billing communications',
-      'Regular customer service satisfaction checkups',
-      'Targeted upsell offers upon tenure milestones',
-      'Streamlined digital app payment adoption'
+      'Automated billing and usage threshold updates',
+      'Regular CSAT feedback monitoring',
+      'Milestone upgrade promotions (e.g. at 12 & 24 months)',
+      'Encouragement of auto-debit adoption'
     ]
   }
 };
@@ -99,22 +100,26 @@ interface CustomerContextType {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
 
+  // Prerequisite & Unlocking Logic
+  completedModules: ModuleCompletionState;
+  isTabUnlocked: (tab: NavigationTab) => boolean;
+  getTabPrerequisite: (tab: NavigationTab) => PrerequisiteInfo | null;
+  attemptNavigateToTab: (tab: NavigationTab) => boolean;
+  completeModule: (tab: NavigationTab, proceedToNext?: boolean) => void;
+  prerequisiteModal: PrerequisiteInfo | null;
+  closePrerequisiteModal: () => void;
+
   // Form profile
   customerProfile: CustomerProfile;
   setCustomerProfile: React.Dispatch<React.SetStateAction<CustomerProfile>>;
   updateCustomerField: <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => void;
   resetCustomerProfile: () => void;
 
-  // ML Prediction
+  // AI Churn Prediction
   predictionResult: PredictionResult | null;
   predictionLoading: boolean;
   predictionError: string | null;
   predictCustomerChurn: (customProfile?: CustomerProfile) => Promise<PredictionResult | null>;
-
-  // Model backend connection
-  apiStatus: ModelApiStatus;
-  checkApiStatus: () => Promise<void>;
-  updateApiUrl: (newUrl: string) => Promise<{ success: boolean; message: string }>;
 
   // Customer Value
   valueSettings: ValueSegmentationSettings;
@@ -150,6 +155,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<NavigationTab>('prediction');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  // Module completion state tracking
+  const [completedModules, setCompletedModules] = useState<ModuleCompletionState>({
+    prediction: false,
+    'customer-value': false,
+    'decision-framework': false,
+    'scenario-view': false,
+    'roi-calculation': false,
+    'generate-insight': false,
+  });
+
+  const [prerequisiteModal, setPrerequisiteModal] = useState<PrerequisiteInfo | null>(null);
+
   // Profile state
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile>(INITIAL_CUSTOMER_PROFILE);
 
@@ -157,14 +174,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionError, setPredictionError] = useState<string | null>(null);
-
-  // Model Backend Status
-  const [apiStatus, setApiStatus] = useState<ModelApiStatus>({
-    connected: false,
-    apiUrl: 'http://localhost:8001',
-    statusMessage: 'Checking connection...',
-    checking: true,
-  });
 
   // Customer Value Settings
   const [valueSettings, setValueSettings] = useState<ValueSegmentationSettings>({
@@ -183,6 +192,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [scenarioProfile, setScenarioProfile] = useState<CustomerProfile>({
     ...INITIAL_CUSTOMER_PROFILE,
     contractType: 'One year',
+    monthlyCharges: 380000,
     total_support_interactions: 0,
   });
   const [scenarioPrediction, setScenarioPrediction] = useState<PredictionResult | null>(null);
@@ -198,92 +208,193 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     costPerCustomer: 85000, // IDR
   });
 
-  // Check model API connection on mount
-  const checkApiStatus = async () => {
-    setApiStatus(prev => ({ ...prev, checking: true }));
-    try {
-      const res = await fetch('/api/model/status');
-      if (res.ok) {
-        const data = await res.json();
-        setApiStatus({
-          connected: data.connected,
-          apiUrl: data.apiUrl,
-          statusMessage: data.statusMessage,
-          checking: false,
-          lastChecked: new Date().toLocaleTimeString(),
-          modelDetails: data.modelDetails,
-        });
-      } else {
-        setApiStatus(prev => ({
-          ...prev,
-          connected: false,
-          checking: false,
-          statusMessage: `Status check returned HTTP ${res.status}`,
-          lastChecked: new Date().toLocaleTimeString(),
-        }));
-      }
-    } catch (err: any) {
-      setApiStatus(prev => ({
-        ...prev,
-        connected: false,
-        checking: false,
-        statusMessage: err.message || 'Unable to query status API',
-        lastChecked: new Date().toLocaleTimeString(),
-      }));
+  // Prerequisite Unlocking Logic
+  const isTabUnlocked = (tab: NavigationTab): boolean => {
+    switch (tab) {
+      case 'prediction':
+        return true; // 1. Always unlocked
+      case 'customer-value':
+        // 2. At least one successful churn prediction
+        return !!predictionResult;
+      case 'decision-framework':
+        // 3. Customer Value analysis completed
+        return !!predictionResult && completedModules['customer-value'];
+      case 'scenario-view':
+        // 4. Decision Framework analysis completed
+        return (
+          !!predictionResult && 
+          completedModules['customer-value'] && 
+          completedModules['decision-framework']
+        );
+      case 'roi-calculation':
+        // 5. At least one scenario analysis completed
+        return (
+          isTabUnlocked('scenario-view') && 
+          (!!scenarioPrediction || completedModules['scenario-view'])
+        );
+      case 'generate-insight':
+        // 6. ROI Calculation completed
+        return (
+          isTabUnlocked('roi-calculation') && 
+          completedModules['roi-calculation']
+        );
+      default:
+        return false;
     }
   };
 
-  useEffect(() => {
-    checkApiStatus();
-  }, []);
+  const getTabPrerequisite = (tab: NavigationTab): PrerequisiteInfo | null => {
+    if (isTabUnlocked(tab)) return null;
 
-  const updateApiUrl = async (newUrl: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      const res = await fetch('/api/model/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiUrl: newUrl }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setApiStatus({
-          connected: data.connected,
-          apiUrl: data.apiUrl,
-          statusMessage: data.statusMessage,
-          checking: false,
-          lastChecked: new Date().toLocaleTimeString(),
-        });
-        return { 
-          success: true, 
-          message: data.connected 
-            ? 'Connected successfully to Python model API!' 
-            : `Updated URL, but server is currently unreachable (${data.statusMessage}).` 
+    switch (tab) {
+      case 'customer-value':
+        return {
+          targetTab: 'customer-value',
+          targetTitle: 'Customer Value',
+          requiredTab: 'prediction',
+          requiredTitle: 'Churn Prediction',
+          reason: 'Customer Value analysis requires at least one successful customer churn prediction.',
         };
+      case 'decision-framework':
+        if (!predictionResult) {
+          return {
+            targetTab: 'decision-framework',
+            targetTitle: 'Decision Framework',
+            requiredTab: 'prediction',
+            requiredTitle: 'Churn Prediction',
+            reason: 'Decision Framework requires completing a Churn Prediction first.',
+          };
+        }
+        return {
+          targetTab: 'decision-framework',
+          targetTitle: 'Decision Framework',
+          requiredTab: 'customer-value',
+          requiredTitle: 'Customer Value',
+          reason: 'Decision Framework requires completing the Customer Value analysis first.',
+        };
+      case 'scenario-view':
+        if (!completedModules['decision-framework']) {
+          return {
+            targetTab: 'scenario-view',
+            targetTitle: 'Scenario View',
+            requiredTab: 'decision-framework',
+            requiredTitle: 'Decision Framework',
+            reason: 'Scenario View simulator requires completing the Decision Framework analysis first.',
+          };
+        }
+        break;
+      case 'roi-calculation':
+        if (!scenarioPrediction && !completedModules['scenario-view']) {
+          return {
+            targetTab: 'roi-calculation',
+            targetTitle: 'ROI Calculation',
+            requiredTab: 'scenario-view',
+            requiredTitle: 'Scenario View',
+            reason: 'ROI Calculation requires at least one completed scenario analysis simulation.',
+          };
+        }
+        break;
+      case 'generate-insight':
+        if (!completedModules['roi-calculation']) {
+          return {
+            targetTab: 'generate-insight',
+            targetTitle: 'Generate Insight',
+            requiredTab: 'roi-calculation',
+            requiredTitle: 'ROI Calculation',
+            reason: 'AI Executive Insight generation requires completing the ROI Calculation model first.',
+          };
+        }
+        break;
+    }
+    return null;
+  };
+
+  const attemptNavigateToTab = (tab: NavigationTab): boolean => {
+    if (isTabUnlocked(tab)) {
+      setActiveTab(tab);
+      return true;
+    }
+
+    const prereq = getTabPrerequisite(tab);
+    if (prereq) {
+      setPrerequisiteModal(prereq);
+    }
+    return false;
+  };
+
+  const closePrerequisiteModal = () => {
+    setPrerequisiteModal(null);
+  };
+
+  const completeModule = (tab: NavigationTab, proceedToNext: boolean = true) => {
+    setCompletedModules(prev => ({ ...prev, [tab]: true }));
+
+    if (proceedToNext) {
+      const order: NavigationTab[] = [
+        'prediction',
+        'customer-value',
+        'decision-framework',
+        'scenario-view',
+        'roi-calculation',
+        'generate-insight',
+      ];
+      const currentIndex = order.indexOf(tab);
+      if (currentIndex >= 0 && currentIndex < order.length - 1) {
+        const nextTab = order[currentIndex + 1];
+        setActiveTab(nextTab);
       }
-      return { success: false, message: data.error || 'Failed to update URL' };
-    } catch (err: any) {
-      return { success: false, message: err.message || 'Network error updating API configuration' };
     }
   };
 
   const updateCustomerField = <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => {
     setCustomerProfile(prev => ({ ...prev, [field]: value }));
+    // Invalidate downstream dependent results if key input changes
+    if (predictionResult) {
+      setPredictionResult(null);
+      setCompletedModules(prev => ({
+        ...prev,
+        prediction: false,
+        'customer-value': false,
+        'decision-framework': false,
+        'scenario-view': false,
+        'roi-calculation': false,
+        'generate-insight': false,
+      }));
+    }
   };
 
   const resetCustomerProfile = () => {
     setCustomerProfile(INITIAL_CUSTOMER_PROFILE);
     setPredictionResult(null);
     setPredictionError(null);
+    setScenarioPrediction(null);
+    setCompletedModules({
+      prediction: false,
+      'customer-value': false,
+      'decision-framework': false,
+      'scenario-view': false,
+      'roi-calculation': false,
+      'generate-insight': false,
+    });
+    setActiveTab('prediction');
   };
 
-  // Predict churn using real Python backend
+  // Predict churn dynamically using Gemini AI engine
   const predictCustomerChurn = async (customProfile?: CustomerProfile): Promise<PredictionResult | null> => {
-    const payload = customProfile || customerProfile;
+    const rawProfile = customProfile || customerProfile;
+    // Strip any possible formatting or string types into pure numbers
+    const payload = {
+      ...rawProfile,
+      tenureMonths: Number(rawProfile.tenureMonths) || 0,
+      monthlyCharges: Number(rawProfile.monthlyCharges) || 0,
+      age: Number(rawProfile.age) || 0,
+      total_support_interactions: Number(rawProfile.total_support_interactions) || 0,
+    };
     setPredictionLoading(true);
     setPredictionError(null);
 
     try {
-      const res = await fetch('/api/model/predict', {
+      const res = await fetch('/api/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -292,7 +403,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        const errorMsg = data.message || data.error || 'Failed to obtain prediction from model service';
+        const errorMsg = data.error || 'Failed to obtain AI churn prediction';
         setPredictionError(errorMsg);
         setPredictionLoading(false);
         return null;
@@ -303,18 +414,21 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         predicted_churn: data.predicted_churn,
         prediction_label: data.prediction_label,
         risk_level: data.risk_level,
-        prediction_horizon: data.prediction_horizon || '1 Month',
-        classification_threshold: data.classification_threshold || 0.50,
+        key_risk_factors: data.key_risk_factors || [],
+        retention_recommendations: data.retention_recommendations || [],
+        prediction_explanation: data.prediction_explanation || '',
         timestamp: new Date().toLocaleTimeString(),
       };
 
       setPredictionResult(result);
+      setScenarioProfile({ ...rawProfile });
       setPredictionLoading(false);
-      // Mark API as connected
-      setApiStatus(prev => ({ ...prev, connected: true, statusMessage: 'Online & Serving' }));
+
+      // Automatically mark Step 1 as completed and unlock Customer Value!
+      setCompletedModules(prev => ({ ...prev, prediction: true }));
       return result;
     } catch (err: any) {
-      const errorMsg = `Prediction Service Connection Error: ${err.message || 'Service unavailable'}. All actual predictions must come from the existing trained Python model.`;
+      const errorMsg = `AI Prediction Error: ${err.message || 'Service unavailable'}.`;
       setPredictionError(errorMsg);
       setPredictionLoading(false);
       return null;
@@ -322,7 +436,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   };
 
   // Customer Value calculations
-  const estimatedHistoricalRevenue = customerProfile.monthlyCharges * customerProfile.tenureMonths;
+  const estimatedHistoricalRevenue = (Number(customerProfile.monthlyCharges) || 0) * (Number(customerProfile.tenureMonths) || 0);
   let customerValueSegment: 'High Value' | 'Medium Value' | 'Low Value' = 'Low Value';
   if (estimatedHistoricalRevenue >= valueSettings.highThreshold) {
     customerValueSegment = 'High Value';
@@ -370,33 +484,47 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const runScenarioSimulation = async () => {
     setIsScenarioSimulating(true);
     setScenarioError(null);
+    const payload = {
+      ...scenarioProfile,
+      tenureMonths: Number(scenarioProfile.tenureMonths) || 0,
+      monthlyCharges: Number(scenarioProfile.monthlyCharges) || 0,
+      age: Number(scenarioProfile.age) || 0,
+      total_support_interactions: Number(scenarioProfile.total_support_interactions) || 0,
+    };
+
     try {
-      const res = await fetch('/api/model/predict', {
+      const res = await fetch('/api/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scenarioProfile),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setScenarioError(data.message || data.error || 'Scenario simulation failed to reach model service');
+        setScenarioError(data.error || 'Scenario simulation failed');
         setIsScenarioSimulating(false);
         return;
       }
 
-      setScenarioPrediction({
+      const result: PredictionResult = {
         churn_probability: data.churn_probability,
         predicted_churn: data.predicted_churn,
         prediction_label: data.prediction_label,
         risk_level: data.risk_level,
-        prediction_horizon: data.prediction_horizon || '1 Month',
-        classification_threshold: data.classification_threshold || 0.50,
+        key_risk_factors: data.key_risk_factors || [],
+        retention_recommendations: data.retention_recommendations || [],
+        prediction_explanation: data.prediction_explanation || '',
         timestamp: new Date().toLocaleTimeString(),
         isScenario: true,
-      });
+      };
+
+      setScenarioPrediction(result);
       setIsScenarioSimulating(false);
+
+      // Scenario completed: Unlocks ROI Calculation!
+      setCompletedModules(prev => ({ ...prev, 'scenario-view': true }));
     } catch (err: any) {
-      setScenarioError(`Simulation Connection Error: ${err.message || 'Service unreachable'}`);
+      setScenarioError(`Simulation Error: ${err.message || 'Service unreachable'}`);
       setIsScenarioSimulating(false);
     }
   };
@@ -431,6 +559,13 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setActiveTab,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
+        completedModules,
+        isTabUnlocked,
+        getTabPrerequisite,
+        attemptNavigateToTab,
+        completeModule,
+        prerequisiteModal,
+        closePrerequisiteModal,
         customerProfile,
         setCustomerProfile,
         updateCustomerField,
@@ -439,9 +574,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         predictionLoading,
         predictionError,
         predictCustomerChurn,
-        apiStatus,
-        checkApiStatus,
-        updateApiUrl,
         valueSettings,
         updateValueSettings,
         estimatedHistoricalRevenue,
