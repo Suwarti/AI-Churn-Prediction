@@ -28,7 +28,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 14mm;
+    margin: 15mm;
   }
 
   *, *::before, *::after {
@@ -38,17 +38,21 @@
   }
 
   html, body {
-    background-color: #020617 !important;
-    color: #f8fafc !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 11pt !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
   }
 
-  /* Exclude all application chrome, navigation, buttons, and footers */
+  /* Exclude all application chrome, navigation, toolbars, buttons, and footers */
   header,
   nav,
   footer,
+  aside,
+  button,
+  .no-print,
   .print\:hidden {
     display: none !important;
   }
@@ -61,14 +65,16 @@
   }
 
   /* Executive Report container styling for print */
-  #executive-report-document {
-    background-color: #020617 !important;
-    color: #f8fafc !important;
+  #executive-report-document,
+  .print-report {
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    width: 100% !important;
   }
 
   /* Prevent page-break splits within individual report cards and sections */
@@ -80,5 +86,59 @@
   .print-page-break {
     page-break-before: always !important;
     break-before: page !important;
+  }
+
+  /* Ensure each section avoids awkward page breaks */
+  #executive-report-document section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 16pt !important;
+  }
+
+  /* Convert dark container backgrounds to clean, readable cards on paper */
+  #executive-report-document .bg-slate-900,
+  #executive-report-document .bg-slate-950,
+  #executive-report-document .bg-slate-900\/70,
+  #executive-report-document .bg-slate-900\/60,
+  #executive-report-document .bg-slate-950\/60,
+  #executive-report-document .bg-slate-950\/70 {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  /* High contrast dark text for print */
+  #executive-report-document .text-white,
+  #executive-report-document .text-slate-100,
+  #executive-report-document .text-slate-200,
+  #executive-report-document .text-slate-300 {
+    color: #0f172a !important;
+  }
+
+  #executive-report-document .text-slate-400 {
+    color: #475569 !important;
+  }
+
+  /* High contrast borders for print */
+  #executive-report-document .border-slate-800,
+  #executive-report-document .border-slate-800\/80,
+  #executive-report-document .border-slate-800\/90,
+  #executive-report-document .border-slate-800\/60 {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Table styling in print */
+  #executive-report-document table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  #executive-report-document th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-bottom: 2px solid #94a3b8 !important;
+  }
+  #executive-report-document td {
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
   }
 }
