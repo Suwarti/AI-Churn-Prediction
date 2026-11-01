@@ -58,23 +58,23 @@ export const ScenarioViewTab: React.FC = () => {
           <Lock className="w-7 h-7" />
         </div>
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-            Prerequisite Required
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
           </span>
           <h3 className="text-xl font-bold text-white tracking-tight">
-            Please complete Churn Prediction first
+            Please complete Churn Prediction first.
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Scenario View requires churn risk predictions to model comparative retention intervention scenarios.
+            This module requires completing Churn Prediction before proceeding.
           </p>
         </div>
         <div className="pt-2">
           <button
+            type="button"
             onClick={() => setActiveTab('prediction')}
             className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
           >
-            <span>Go to Churn Prediction</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>GO TO CHURN PREDICTION →</span>
           </button>
         </div>
       </div>
@@ -89,23 +89,23 @@ export const ScenarioViewTab: React.FC = () => {
           <Lock className="w-7 h-7" />
         </div>
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-            Prerequisite Required
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
           </span>
           <h3 className="text-xl font-bold text-white tracking-tight">
-            Please complete Customer Value analysis first
+            Please complete Customer Value first.
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Customer economic valuation is required to evaluate cost-effective retention spending across scenarios.
+            Scenario View requires completing Customer Value analysis first.
           </p>
         </div>
         <div className="pt-2">
           <button
+            type="button"
             onClick={() => setActiveTab('customer-value')}
             className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
           >
-            <span>Go to Customer Value</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>GO TO CUSTOMER VALUE →</span>
           </button>
         </div>
       </div>
@@ -120,11 +120,11 @@ export const ScenarioViewTab: React.FC = () => {
           <Lock className="w-7 h-7" />
         </div>
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-            Prerequisite Required
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
           </span>
           <h3 className="text-xl font-bold text-white tracking-tight">
-            Please complete Decision Framework first
+            Please complete Decision Framework first.
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
             The Decision Framework must establish the customer&apos;s overarching strategic decision before generating tailored retention scenarios.
@@ -132,11 +132,11 @@ export const ScenarioViewTab: React.FC = () => {
         </div>
         <div className="pt-2">
           <button
+            type="button"
             onClick={() => setActiveTab('decision-framework')}
             className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
           >
-            <span>Go to Decision Framework</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>GO TO DECISION FRAMEWORK →</span>
           </button>
         </div>
       </div>

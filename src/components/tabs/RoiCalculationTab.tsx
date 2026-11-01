@@ -66,41 +66,124 @@ export const RoiCalculationTab: React.FC = () => {
     calculateAutomatedRoi
   ]);
 
-  // Guard: Prerequisite check
-  if (!isTabUnlocked('roi-calculation') || !predictionResult || !completedModules['scenario-view']) {
+  // Guard 1: Churn Prediction prerequisite
+  if (!predictionResult) {
     return (
       <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
           <Lock className="w-7 h-7" />
         </div>
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-            Prerequisite Required
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
           </span>
           <h3 className="text-xl font-bold text-white tracking-tight">
-            Please complete Scenario View first
+            Please complete Churn Prediction first.
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            The automated ROI Calculation module requires completed customer churn prediction, customer value assessment, strategic decision, and scenario view recommendations before computing retention economics.
+            This module requires completing Churn Prediction before proceeding.
           </p>
         </div>
         <div className="pt-2">
           <button
-            onClick={() => {
-              if (!predictionResult) {
-                setActiveTab('prediction');
-              } else if (!completedModules['customer-value']) {
-                setActiveTab('customer-value');
-              } else if (!completedModules['decision-framework']) {
-                setActiveTab('decision-framework');
-              } else {
-                setActiveTab('scenario-view');
-              }
-            }}
+            type="button"
+            onClick={() => setActiveTab('prediction')}
             className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
           >
-            <span>Proceed to Upstream Module</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>GO TO CHURN PREDICTION →</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 2: Customer Value prerequisite
+  if (!completedModules['customer-value'] && !customerValueFinancials) {
+    return (
+      <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Lock className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
+          </span>
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            Please complete Customer Value first.
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            ROI Calculation requires completing Customer Value analysis first.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('customer-value')}
+            className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+          >
+            <span>GO TO CUSTOMER VALUE →</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 3: Decision Framework prerequisite
+  if (!completedModules['decision-framework'] && !finalDecisionAnalysis) {
+    return (
+      <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Lock className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
+          </span>
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            Please complete Decision Framework first.
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            ROI Calculation requires completing Decision Framework analysis first.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('decision-framework')}
+            className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+          >
+            <span>GO TO DECISION FRAMEWORK →</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 4: Scenario View prerequisite
+  if (!completedModules['scenario-view'] && !scenarioRecommendations && !isTabUnlocked('roi-calculation')) {
+    return (
+      <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Lock className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            PREREQUISITE REQUIRED
+          </span>
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            Please complete Scenario View first.
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            The automated ROI Calculation module requires completed retention scenario recommendations before computing campaign economics.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('scenario-view')}
+            className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+          >
+            <span>GO TO SCENARIO VIEW →</span>
           </button>
         </div>
       </div>

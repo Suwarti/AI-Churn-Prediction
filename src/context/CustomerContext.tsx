@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
   CustomerProfile, 
   PredictionResult, 
@@ -272,10 +272,19 @@ interface CustomerContextType {
   roiResults: RoiResults;
 }
 
+export const TAB_TITLES: Record<NavigationTab, string> = {
+  prediction: 'Churn Prediction',
+  'customer-value': 'Customer Value',
+  'decision-framework': 'Decision Framework',
+  'scenario-view': 'Scenario View',
+  'roi-calculation': 'ROI Calculation',
+  'generate-insight': 'Generate Insight',
+};
+
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
-  const [activeTab, setActiveTab] = useState<NavigationTab>('prediction');
+  const [activeTab, setActiveTabState] = useState<NavigationTab>('prediction');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Module completion state tracking
@@ -352,36 +361,37 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   // Prerequisite Unlocking Logic
   const isTabUnlocked = (tab: NavigationTab): boolean => {
+    if (tab === 'prediction') {
+      return true; // 1. Churn Prediction is always unlocked
+    }
+
+    // Global Navigation Rule: If Churn Prediction has not been completed, ALL other tabs must be locked.
+    const isPredictionComplete = !!predictionResult || completedModules['prediction'];
+    if (!isPredictionComplete) {
+      return false;
+    }
+
+    // Churn Prediction is complete. Preserve existing prerequisite dependencies between subsequent modules:
+    const isCustomerValueComplete = !!customerValueAiAssessment || completedModules['customer-value'];
+    const isDecisionFrameworkComplete = !!finalDecisionAnalysis || completedModules['decision-framework'];
+    const isScenarioViewComplete = !!scenarioRecommendations || !!scenarioPrediction || completedModules['scenario-view'];
+    const isRoiCalculationComplete = !!automatedRoiAnalysis || completedModules['roi-calculation'];
+
     switch (tab) {
-      case 'prediction':
-        return true; // 1. Always unlocked
       case 'customer-value':
-        // 2. At least one successful churn prediction
-        return !!predictionResult || completedModules['prediction'];
+        return true; // Unlocked once Churn Prediction is completed
       case 'decision-framework':
-        // 3. Customer Value analysis completed
-        return (
-          (!!predictionResult || completedModules['prediction']) &&
-          (!!customerValueAiAssessment || completedModules['customer-value'])
-        );
+        return isCustomerValueComplete;
       case 'scenario-view':
-        // 4. Decision Framework analysis completed
-        return (
-          (!!predictionResult || completedModules['prediction']) &&
-          (!!customerValueAiAssessment || completedModules['customer-value']) &&
-          (!!finalDecisionAnalysis || completedModules['decision-framework'])
-        );
+        return isCustomerValueComplete && isDecisionFrameworkComplete;
       case 'roi-calculation':
-        // 5. At least one scenario analysis completed
-        return (
-          isTabUnlocked('scenario-view') &&
-          (!!scenarioRecommendations || !!scenarioPrediction || completedModules['scenario-view'])
-        );
+        return isCustomerValueComplete && isDecisionFrameworkComplete && isScenarioViewComplete;
       case 'generate-insight':
-        // 6. ROI Calculation completed
         return (
-          isTabUnlocked('roi-calculation') &&
-          (!!automatedRoiAnalysis || completedModules['roi-calculation'])
+          isCustomerValueComplete &&
+          isDecisionFrameworkComplete &&
+          isScenarioViewComplete &&
+          isRoiCalculationComplete
         );
       default:
         return false;
@@ -391,72 +401,96 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const getTabPrerequisite = (tab: NavigationTab): PrerequisiteInfo | null => {
     if (isTabUnlocked(tab)) return null;
 
-    switch (tab) {
-      case 'customer-value':
-        return {
-          targetTab: 'customer-value',
-          targetTitle: 'Customer Value',
-          requiredTab: 'prediction',
-          requiredTitle: 'Churn Prediction',
-          reason: 'Customer Value analysis requires at least one successful customer churn prediction.',
-        };
-      case 'decision-framework':
-        if (!predictionResult) {
-          return {
-            targetTab: 'decision-framework',
-            targetTitle: 'Decision Framework',
-            requiredTab: 'prediction',
-            requiredTitle: 'Churn Prediction',
-            reason: 'Decision Framework requires completing a Churn Prediction first.',
-          };
-        }
-        return {
-          targetTab: 'decision-framework',
-          targetTitle: 'Decision Framework',
-          requiredTab: 'customer-value',
-          requiredTitle: 'Customer Value',
-          reason: 'Decision Framework requires completing the Customer Value analysis first.',
-        };
-      case 'scenario-view':
-        if (!completedModules['decision-framework']) {
-          return {
-            targetTab: 'scenario-view',
-            targetTitle: 'Scenario View',
-            requiredTab: 'decision-framework',
-            requiredTitle: 'Decision Framework',
-            reason: 'Scenario View simulator requires completing the Decision Framework analysis first.',
-          };
-        }
-        break;
-      case 'roi-calculation':
-        if (!scenarioPrediction && !completedModules['scenario-view']) {
-          return {
-            targetTab: 'roi-calculation',
-            targetTitle: 'ROI Calculation',
-            requiredTab: 'scenario-view',
-            requiredTitle: 'Scenario View',
-            reason: 'ROI Calculation requires at least one completed scenario analysis simulation.',
-          };
-        }
-        break;
-      case 'generate-insight':
-        if (!completedModules['roi-calculation']) {
-          return {
-            targetTab: 'generate-insight',
-            targetTitle: 'Generate Insight',
-            requiredTab: 'roi-calculation',
-            requiredTitle: 'ROI Calculation',
-            reason: 'AI Executive Insight generation requires completing the ROI Calculation model first.',
-          };
-        }
-        break;
+    const isPredictionComplete = !!predictionResult || completedModules['prediction'];
+
+    // Global Navigation Rule:
+    // If Churn Prediction has not been completed, ALL other tabs must be locked.
+    // Whenever a user clicks any locked tab, always display the same prerequisite modal:
+    // Title: "PREREQUISITE REQUIRED"
+    // Message: "Please complete Churn Prediction first."
+    // Description: "This module requires completing Churn Prediction before proceeding."
+    // Button: "GO TO CHURN PREDICTION →"
+    if (!isPredictionComplete) {
+      return {
+        targetTab: tab,
+        targetTitle: TAB_TITLES[tab] || 'Module',
+        requiredTab: 'prediction',
+        requiredTitle: 'Churn Prediction',
+        title: 'PREREQUISITE REQUIRED',
+        message: 'Please complete Churn Prediction first.',
+        description: 'This module requires completing Churn Prediction before proceeding.',
+        reason: 'This module requires completing Churn Prediction before proceeding.',
+        buttonText: 'GO TO CHURN PREDICTION →',
+      };
     }
+
+    // Preserve the existing prerequisite dependencies between subsequent modules once Churn Prediction is completed:
+    const isCustomerValueComplete = !!customerValueAiAssessment || completedModules['customer-value'];
+    if (!isCustomerValueComplete) {
+      return {
+        targetTab: tab,
+        targetTitle: TAB_TITLES[tab] || 'Module',
+        requiredTab: 'customer-value',
+        requiredTitle: 'Customer Value',
+        title: 'PREREQUISITE REQUIRED',
+        message: 'Please complete Customer Value first.',
+        description: `${TAB_TITLES[tab] || 'This module'} requires completing Customer Value analysis first.`,
+        reason: `${TAB_TITLES[tab] || 'This module'} requires completing Customer Value analysis first.`,
+        buttonText: 'GO TO CUSTOMER VALUE →',
+      };
+    }
+
+    const isDecisionFrameworkComplete = !!finalDecisionAnalysis || completedModules['decision-framework'];
+    if (!isDecisionFrameworkComplete) {
+      return {
+        targetTab: tab,
+        targetTitle: TAB_TITLES[tab] || 'Module',
+        requiredTab: 'decision-framework',
+        requiredTitle: 'Decision Framework',
+        title: 'PREREQUISITE REQUIRED',
+        message: 'Please complete Decision Framework first.',
+        description: `${TAB_TITLES[tab] || 'This module'} requires completing Decision Framework analysis first.`,
+        reason: `${TAB_TITLES[tab] || 'This module'} requires completing Decision Framework analysis first.`,
+        buttonText: 'GO TO DECISION FRAMEWORK →',
+      };
+    }
+
+    const isScenarioViewComplete = !!scenarioRecommendations || !!scenarioPrediction || completedModules['scenario-view'];
+    if (!isScenarioViewComplete) {
+      return {
+        targetTab: tab,
+        targetTitle: TAB_TITLES[tab] || 'Module',
+        requiredTab: 'scenario-view',
+        requiredTitle: 'Scenario View',
+        title: 'PREREQUISITE REQUIRED',
+        message: 'Please complete Scenario View first.',
+        description: `${TAB_TITLES[tab] || 'This module'} requires completing Scenario View analysis first.`,
+        reason: `${TAB_TITLES[tab] || 'This module'} requires completing Scenario View analysis first.`,
+        buttonText: 'GO TO SCENARIO VIEW →',
+      };
+    }
+
+    const isRoiCalculationComplete = !!automatedRoiAnalysis || completedModules['roi-calculation'];
+    if (!isRoiCalculationComplete) {
+      return {
+        targetTab: tab,
+        targetTitle: TAB_TITLES[tab] || 'Module',
+        requiredTab: 'roi-calculation',
+        requiredTitle: 'ROI Calculation',
+        title: 'PREREQUISITE REQUIRED',
+        message: 'Please complete ROI Calculation first.',
+        description: `${TAB_TITLES[tab] || 'This module'} requires completing ROI Calculation analysis first.`,
+        reason: `${TAB_TITLES[tab] || 'This module'} requires completing ROI Calculation analysis first.`,
+        buttonText: 'GO TO ROI CALCULATION →',
+      };
+    }
+
     return null;
   };
 
   const attemptNavigateToTab = (tab: NavigationTab): boolean => {
     if (isTabUnlocked(tab)) {
-      setActiveTab(tab);
+      setActiveTabState(tab);
       return true;
     }
 
@@ -466,6 +500,25 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
     return false;
   };
+
+  const setActiveTab = (tab: NavigationTab) => {
+    if (isTabUnlocked(tab)) {
+      setActiveTabState(tab);
+    } else {
+      const prereq = getTabPrerequisite(tab);
+      if (prereq) {
+        setPrerequisiteModal(prereq);
+      }
+    }
+  };
+
+  // Guard: if Churn Prediction is incomplete, force activeTab back to 'prediction'
+  useEffect(() => {
+    const isPredictionComplete = !!predictionResult || completedModules['prediction'];
+    if (!isPredictionComplete && activeTab !== 'prediction') {
+      setActiveTabState('prediction');
+    }
+  }, [predictionResult, completedModules, activeTab]);
 
   const closePrerequisiteModal = () => {
     setPrerequisiteModal(null);
@@ -486,7 +539,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       const currentIndex = order.indexOf(tab);
       if (currentIndex >= 0 && currentIndex < order.length - 1) {
         const nextTab = order[currentIndex + 1];
-        setActiveTab(nextTab);
+        setActiveTabState(nextTab);
       }
     }
   };

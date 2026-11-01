@@ -69,6 +69,10 @@ export interface PrerequisiteInfo {
   requiredTab: NavigationTab;
   requiredTitle: string;
   reason: string;
+  title?: string;
+  message?: string;
+  description?: string;
+  buttonText?: string;
 }
 
 export interface ValueSegmentationSettings {

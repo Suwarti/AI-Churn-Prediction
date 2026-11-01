@@ -77,20 +77,55 @@ export const GenerateInsightTab: React.FC = () => {
 
   // Check if any prerequisite is incomplete
   const missingPrerequisite = useMemo(() => {
-    if (!predictionResult) {
-      return { tab: 'prediction', title: 'Churn Prediction', msg: 'Run an initial Churn Prediction for the subscriber.' };
+    if (!predictionResult && !completedModules['prediction']) {
+      return {
+        tab: 'prediction',
+        title: 'Churn Prediction',
+        headerTitle: 'PREREQUISITE REQUIRED',
+        messageText: 'Please complete Churn Prediction first.',
+        description: 'This module requires completing Churn Prediction before proceeding.',
+        buttonLabel: 'GO TO CHURN PREDICTION →',
+      };
     }
     if (!completedModules['customer-value'] && !customerValueFinancials) {
-      return { tab: 'customer-value', title: 'Customer Value', msg: 'Complete the automated Customer Value Assessment.' };
+      return {
+        tab: 'customer-value',
+        title: 'Customer Value',
+        headerTitle: 'PREREQUISITE REQUIRED',
+        messageText: 'Please complete Customer Value first.',
+        description: 'Generate Insight requires completing Customer Value analysis first.',
+        buttonLabel: 'GO TO CUSTOMER VALUE →',
+      };
     }
     if (!completedModules['decision-framework'] && !finalDecisionAnalysis) {
-      return { tab: 'decision-framework', title: 'Decision Framework', msg: 'Generate the final strategic retention decision.' };
+      return {
+        tab: 'decision-framework',
+        title: 'Decision Framework',
+        headerTitle: 'PREREQUISITE REQUIRED',
+        messageText: 'Please complete Decision Framework first.',
+        description: 'Generate Insight requires completing Decision Framework analysis first.',
+        buttonLabel: 'GO TO DECISION FRAMEWORK →',
+      };
     }
     if (!completedModules['scenario-view'] && !scenarioRecommendations) {
-      return { tab: 'scenario-view', title: 'Scenario View', msg: 'Generate retention scenario recommendations.' };
+      return {
+        tab: 'scenario-view',
+        title: 'Scenario View',
+        headerTitle: 'PREREQUISITE REQUIRED',
+        messageText: 'Please complete Scenario View first.',
+        description: 'Generate Insight requires completing Scenario View analysis first.',
+        buttonLabel: 'GO TO SCENARIO VIEW →',
+      };
     }
     if (!completedModules['roi-calculation'] && !automatedRoiAnalysis) {
-      return { tab: 'roi-calculation', title: 'ROI Calculation', msg: 'Compute automated retention campaign economics.' };
+      return {
+        tab: 'roi-calculation',
+        title: 'ROI Calculation',
+        headerTitle: 'PREREQUISITE REQUIRED',
+        messageText: 'Please complete ROI Calculation first.',
+        description: 'Generate Insight requires completing ROI Calculation analysis first.',
+        buttonLabel: 'GO TO ROI CALCULATION →',
+      };
     }
     return null;
   }, [
@@ -188,23 +223,23 @@ export const GenerateInsightTab: React.FC = () => {
           <Lock className="w-7 h-7" />
         </div>
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-            Prerequisite Incomplete
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 inline-block">
+            {missingPrerequisite.headerTitle}
           </span>
           <h3 className="text-xl font-bold text-white tracking-tight">
-            Please complete {missingPrerequisite.title} first
+            {missingPrerequisite.messageText}
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            {missingPrerequisite.msg} The final executive report requires actual analytical results from all six modules before generating a consolidated deliverable.
+            {missingPrerequisite.description}
           </p>
         </div>
         <div className="pt-2">
           <button
+            type="button"
             onClick={() => setActiveTab(missingPrerequisite.tab as any)}
             className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
           >
-            <span>Go to {missingPrerequisite.title}</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{missingPrerequisite.buttonLabel}</span>
           </button>
         </div>
       </div>
