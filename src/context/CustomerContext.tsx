@@ -8,8 +8,114 @@ import {
   RoiAssumptions,
   RoiResults,
   ModuleCompletionState,
-  PrerequisiteInfo
+  PrerequisiteInfo,
+  CustomerValueSegment,
+  CustomerValueFinancials,
+  CustomerValueAiAssessment,
+  FinalDecisionLabel,
+  FinalDecisionAnalysis,
+  RetentionScenarioItem,
+  ScenarioRecommendationsResult,
+  AutomatedRoiAnalysis,
+  SingleScenarioFinancials
 } from '../types';
+
+export function computeScenarioFinancials(
+  estimatedCustomerValue: number,
+  id: 'conservative' | 'base-case' | 'optimistic',
+  name: string
+): SingleScenarioFinancials {
+  const successRates = {
+    conservative: 0.20,
+    'base-case': 0.35,
+    optimistic: 0.50,
+  };
+  const costPercentages = {
+    conservative: 0.05,
+    'base-case': 0.10,
+    optimistic: 0.15,
+  };
+
+  const assumedSuccessRate = successRates[id];
+  const costPercentage = costPercentages[id];
+
+  const estimatedRetentionCost = Math.round(estimatedCustomerValue * costPercentage);
+  const expectedRetainedValue = Math.round(estimatedCustomerValue * assumedSuccessRate);
+  const expectedNetGain = expectedRetainedValue - estimatedRetentionCost;
+  const estimatedRoiPercentage = estimatedRetentionCost > 0
+    ? ((expectedNetGain / estimatedRetentionCost) * 100)
+    : 0;
+
+  return {
+    id,
+    name,
+    assumedSuccessRate,
+    costPercentage,
+    estimatedRetentionCost,
+    expectedRetainedValue,
+    expectedNetGain,
+    estimatedRoiPercentage,
+  };
+}
+
+export function determineFinalDecision(churnRisk: 'High' | 'Low', customerValue: 'High' | 'Low'): FinalDecisionLabel {
+  if (churnRisk === 'High' && customerValue === 'High') {
+    return 'Priority Retention';
+  }
+  if (churnRisk === 'High' && customerValue === 'Low') {
+    return 'Cost-Efficient Retention';
+  }
+  if (churnRisk === 'Low' && customerValue === 'High') {
+    return 'Loyalty Enhancement';
+  }
+  return 'Standard Engagement';
+}
+
+export function calculateCustomerValueFinancials(profile: CustomerProfile): CustomerValueFinancials {
+  const monthlyCharges = Number(profile.monthlyCharges) || 0;
+  const tenureMonths = Number(profile.tenureMonths) || 0;
+
+  // Base contract horizon modeled from contract type
+  let baseContractMonths = 6;
+  if (profile.contractType === 'Two year') {
+    baseContractMonths = 24;
+  } else if (profile.contractType === 'One year') {
+    baseContractMonths = 12;
+  } else {
+    baseContractMonths = 6;
+  }
+
+  // Tenure longevity & relationship stability bonus
+  let tenureBonusMonths = 0;
+  if (tenureMonths >= 36) {
+    tenureBonusMonths = 6;
+  } else if (tenureMonths >= 24) {
+    tenureBonusMonths = 4;
+  } else if (tenureMonths >= 12) {
+    tenureBonusMonths = 2;
+  }
+
+  // Multi-play service bundling factor
+  let bundlingBonusMonths = 0;
+  if (profile.hasPhoneService === 'Yes' && profile.hasInternetService !== 'No') {
+    bundlingBonusMonths = 2;
+  }
+
+  const expectedRemainingMonths = Math.max(1, baseContractMonths + tenureBonusMonths + bundlingBonusMonths);
+  const estimatedCustomerValue = monthlyCharges * expectedRemainingMonths;
+
+  return {
+    monthlyCharges,
+    tenureMonths,
+    expectedRemainingMonths,
+    estimatedCustomerValue,
+    calculationBreakdown: {
+      baseContractMonths,
+      tenureBonusMonths,
+      bundlingBonusMonths,
+    },
+  };
+}
 
 export const INITIAL_CUSTOMER_PROFILE: CustomerProfile = {
   tenureMonths: '',
@@ -122,19 +228,32 @@ interface CustomerContextType {
   predictCustomerChurn: (customProfile?: CustomerProfile) => Promise<PredictionResult | null>;
 
   // Customer Value
+  customerValueFinancials: CustomerValueFinancials | null;
+  customerValueAiAssessment: CustomerValueAiAssessment | null;
+  customerValueAiLoading: boolean;
+  customerValueAiError: string | null;
+  assessCustomerValue: (customProfile?: CustomerProfile, customPrediction?: PredictionResult | null) => Promise<CustomerValueAiAssessment | null>;
   valueSettings: ValueSegmentationSettings;
   updateValueSettings: (updates: Partial<ValueSegmentationSettings>) => void;
   estimatedHistoricalRevenue: number;
-  customerValueSegment: 'High Value' | 'Medium Value' | 'Low Value';
+  customerValueSegment: CustomerValueSegment;
 
-  // Decision Framework
+  // Decision Framework - ONE Final Decision
+  finalDecisionAnalysis: FinalDecisionAnalysis | null;
+  finalDecisionLoading: boolean;
+  finalDecisionError: string | null;
+  generateFinalDecision: () => Promise<FinalDecisionAnalysis | null>;
   decisionThresholds: { riskThreshold: number; valueThreshold: number };
   updateDecisionThresholds: (updates: Partial<{ riskThreshold: number; valueThreshold: number }>) => void;
   quadrantConfigs: Record<string, DecisionQuadrantConfig>;
   updateQuadrantConfig: (id: string, updates: Partial<DecisionQuadrantConfig>) => void;
   activeQuadrantId: string;
 
-  // Scenario Simulator
+  // Scenario Simulator & Automated Scenario Recommendations
+  scenarioRecommendations: ScenarioRecommendationsResult | null;
+  scenarioRecommendationsLoading: boolean;
+  scenarioRecommendationsError: string | null;
+  generateScenarioRecommendations: () => Promise<ScenarioRecommendationsResult | null>;
   scenarioProfile: CustomerProfile;
   updateScenarioField: <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => void;
   scenarioPrediction: PredictionResult | null;
@@ -143,7 +262,11 @@ interface CustomerContextType {
   runScenarioSimulation: () => Promise<void>;
   syncScenarioWithOriginal: () => void;
 
-  // ROI Calculator
+  // Automated ROI Analysis
+  automatedRoiAnalysis: AutomatedRoiAnalysis | null;
+  automatedRoiLoading: boolean;
+  automatedRoiError: string | null;
+  calculateAutomatedRoi: () => Promise<AutomatedRoiAnalysis | null>;
   roiAssumptions: RoiAssumptions;
   updateRoiAssumptions: (updates: Partial<RoiAssumptions>) => void;
   roiResults: RoiResults;
@@ -175,11 +298,20 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [predictionError, setPredictionError] = useState<string | null>(null);
 
-  // Customer Value Settings
+  // Customer Value Settings & AI Assessment State
+  const [customerValueFinancials, setCustomerValueFinancials] = useState<CustomerValueFinancials | null>(null);
+  const [customerValueAiAssessment, setCustomerValueAiAssessment] = useState<CustomerValueAiAssessment | null>(null);
+  const [customerValueAiLoading, setCustomerValueAiLoading] = useState(false);
+  const [customerValueAiError, setCustomerValueAiError] = useState<string | null>(null);
   const [valueSettings, setValueSettings] = useState<ValueSegmentationSettings>({
     highThreshold: 10000000, // Rp 10.000.000
     mediumThreshold: 4000000, // Rp 4.000.000
   });
+
+  // Decision Framework State - ONE Final Decision
+  const [finalDecisionAnalysis, setFinalDecisionAnalysis] = useState<FinalDecisionAnalysis | null>(null);
+  const [finalDecisionLoading, setFinalDecisionLoading] = useState(false);
+  const [finalDecisionError, setFinalDecisionError] = useState<string | null>(null);
 
   // Decision Framework Settings
   const [decisionThresholds, setDecisionThresholds] = useState({
@@ -187,6 +319,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     valueThreshold: 10000000,
   });
   const [quadrantConfigs, setQuadrantConfigs] = useState<Record<string, DecisionQuadrantConfig>>(DEFAULT_QUADRANTS);
+
+  // Automated Scenario Recommendations State
+  const [scenarioRecommendations, setScenarioRecommendations] = useState<ScenarioRecommendationsResult | null>(null);
+  const [scenarioRecommendationsLoading, setScenarioRecommendationsLoading] = useState(false);
+  const [scenarioRecommendationsError, setScenarioRecommendationsError] = useState<string | null>(null);
 
   // Scenario state
   const [scenarioProfile, setScenarioProfile] = useState<CustomerProfile>({
@@ -198,6 +335,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [scenarioPrediction, setScenarioPrediction] = useState<PredictionResult | null>(null);
   const [isScenarioSimulating, setIsScenarioSimulating] = useState(false);
   const [scenarioError, setScenarioError] = useState<string | null>(null);
+
+  // Automated ROI Analysis State
+  const [automatedRoiAnalysis, setAutomatedRoiAnalysis] = useState<AutomatedRoiAnalysis | null>(null);
+  const [automatedRoiLoading, setAutomatedRoiLoading] = useState(false);
+  const [automatedRoiError, setAutomatedRoiError] = useState<string | null>(null);
 
   // ROI Assumptions
   const [roiAssumptions, setRoiAssumptions] = useState<RoiAssumptions>({
@@ -351,6 +493,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     // Invalidate downstream dependent results if key input changes
     if (predictionResult) {
       setPredictionResult(null);
+      setCustomerValueAiAssessment(null);
+      setCustomerValueFinancials(null);
+      setFinalDecisionAnalysis(null);
+      setFinalDecisionError(null);
+      setScenarioRecommendations(null);
+      setScenarioRecommendationsError(null);
+      setAutomatedRoiAnalysis(null);
+      setAutomatedRoiError(null);
       setCompletedModules(prev => ({
         ...prev,
         prediction: false,
@@ -367,6 +517,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     setCustomerProfile(INITIAL_CUSTOMER_PROFILE);
     setPredictionResult(null);
     setPredictionError(null);
+    setCustomerValueAiAssessment(null);
+    setCustomerValueFinancials(null);
+    setCustomerValueAiError(null);
+    setFinalDecisionAnalysis(null);
+    setFinalDecisionError(null);
+    setScenarioRecommendations(null);
+    setScenarioRecommendationsError(null);
+    setAutomatedRoiAnalysis(null);
+    setAutomatedRoiError(null);
     setScenarioPrediction(null);
     setCompletedModules({
       prediction: false,
@@ -377,6 +536,62 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       'generate-insight': false,
     });
     setActiveTab('prediction');
+  };
+
+  // Automated AI Customer Value Assessment
+  const assessCustomerValue = async (
+    customProfile?: CustomerProfile,
+    customPrediction?: PredictionResult | null
+  ): Promise<CustomerValueAiAssessment | null> => {
+    const prof = customProfile || customerProfile;
+    const pred = customPrediction !== undefined ? customPrediction : predictionResult;
+    const fin = calculateCustomerValueFinancials(prof);
+    setCustomerValueFinancials(fin);
+
+    setCustomerValueAiLoading(true);
+    setCustomerValueAiError(null);
+
+    try {
+      const res = await fetch('/api/customer-value/assess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerProfile: {
+            ...prof,
+            tenureMonths: Number(prof.tenureMonths) || 0,
+            monthlyCharges: Number(prof.monthlyCharges) || 0,
+            age: Number(prof.age) || 0,
+            total_support_interactions: Number(prof.total_support_interactions) || 0,
+          },
+          financials: fin,
+          churnPrediction: pred,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to complete AI Customer Value assessment');
+      }
+
+      const assessment: CustomerValueAiAssessment = {
+        customer_value_segment: data.customer_value_segment,
+        customer_value_assessment: data.customer_value_assessment,
+        key_value_drivers: data.key_value_drivers || [],
+        business_interpretation: data.business_interpretation,
+        retention_strategy: data.retention_strategy,
+        cachedAt: new Date().toLocaleTimeString(),
+        engine: data.engine || 'gemini-3.8-flash',
+      };
+
+      setCustomerValueAiAssessment(assessment);
+      setCustomerValueAiLoading(false);
+      setCompletedModules(prev => ({ ...prev, 'customer-value': true }));
+      return assessment;
+    } catch (err: any) {
+      setCustomerValueAiError(err.message || 'Customer value assessment failed');
+      setCustomerValueAiLoading(false);
+      return null;
+    }
   };
 
   // Predict churn dynamically using Gemini AI engine
@@ -426,6 +641,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
       // Automatically mark Step 1 as completed and unlock Customer Value!
       setCompletedModules(prev => ({ ...prev, prediction: true }));
+
+      // Automatically execute Customer Value Assessment using Gemini AI in the background!
+      assessCustomerValue(rawProfile, result);
+
       return result;
     } catch (err: any) {
       const errorMsg = `AI Prediction Error: ${err.message || 'Service unavailable'}.`;
@@ -437,12 +656,13 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   // Customer Value calculations
   const estimatedHistoricalRevenue = (Number(customerProfile.monthlyCharges) || 0) * (Number(customerProfile.tenureMonths) || 0);
-  let customerValueSegment: 'High Value' | 'Medium Value' | 'Low Value' = 'Low Value';
-  if (estimatedHistoricalRevenue >= valueSettings.highThreshold) {
-    customerValueSegment = 'High Value';
-  } else if (estimatedHistoricalRevenue >= valueSettings.mediumThreshold) {
-    customerValueSegment = 'Medium Value';
-  }
+  const customerValueSegment: CustomerValueSegment =
+    customerValueAiAssessment?.customer_value_segment ??
+    (estimatedHistoricalRevenue >= valueSettings.highThreshold
+      ? 'High Value'
+      : estimatedHistoricalRevenue >= valueSettings.mediumThreshold
+      ? 'Medium Value'
+      : 'Low Value');
 
   const updateValueSettings = (updates: Partial<ValueSegmentationSettings>) => {
     setValueSettings(prev => ({ ...prev, ...updates }));
@@ -462,13 +682,222 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   // Determine active quadrant based on current customer state
   const isHighRisk = (predictionResult?.churn_probability ?? 0.5) >= decisionThresholds.riskThreshold;
-  const isHighValue = estimatedHistoricalRevenue >= decisionThresholds.valueThreshold;
+  const isHighValue = customerValueAiAssessment
+    ? customerValueAiAssessment.customer_value_segment === 'High Value'
+    : estimatedHistoricalRevenue >= decisionThresholds.valueThreshold;
   
   let activeQuadrantId = 'high-risk-high-value';
   if (isHighRisk && isHighValue) activeQuadrantId = 'high-risk-high-value';
   else if (isHighRisk && !isHighValue) activeQuadrantId = 'high-risk-low-value';
   else if (!isHighRisk && isHighValue) activeQuadrantId = 'low-risk-high-value';
   else activeQuadrantId = 'low-risk-low-value';
+
+  // Generate ONE Final Strategic Decision using the Exact Decision Matrix + Gemini AI
+  const generateFinalDecision = async (): Promise<FinalDecisionAnalysis | null> => {
+    if (!predictionResult) return null;
+
+    const churnRiskCat: 'High' | 'Low' = 
+      (predictionResult.risk_level === 'High' || predictionResult.churn_probability >= 0.50) ? 'High' : 'Low';
+    const valueCat: 'High' | 'Low' = 
+      (customerValueSegment === 'High Value' || (customerValueFinancials?.estimatedCustomerValue ?? 0) >= 10000000) ? 'High' : 'Low';
+    const decision = determineFinalDecision(churnRiskCat, valueCat);
+
+    setFinalDecisionLoading(true);
+    setFinalDecisionError(null);
+
+    const fin = customerValueFinancials || calculateCustomerValueFinancials(customerProfile);
+
+    try {
+      const res = await fetch('/api/decision-framework/interpret', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          churnRisk: churnRiskCat,
+          customerValueSegment: valueCat,
+          finalDecision: decision,
+          churnProbability: predictionResult.churn_probability,
+          estimatedCustomerValue: fin.estimatedCustomerValue,
+          customerProfile,
+          keyRiskFactors: predictionResult.key_risk_factors,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate decision interpretation');
+      }
+
+      const result: FinalDecisionAnalysis = {
+        churnRiskCategory: churnRiskCat,
+        valueCategory: valueCat,
+        finalDecision: decision,
+        businessInterpretation: data.business_interpretation,
+        businessRationale: data.business_rationale,
+        primaryRetentionStrategy: data.primary_retention_strategy,
+        recommendedActions: data.recommended_actions || [],
+        engine: data.engine || 'gemini-3.8-flash',
+        cachedAt: new Date().toLocaleTimeString(),
+      };
+
+      setFinalDecisionAnalysis(result);
+      setFinalDecisionLoading(false);
+      setCompletedModules(prev => ({ ...prev, 'decision-framework': true }));
+      return result;
+    } catch (err: any) {
+      setFinalDecisionError(err.message || 'Decision generation failed');
+      setFinalDecisionLoading(false);
+      return null;
+    }
+  };
+
+  // Generate Automated AI-Powered Retention Strategy Recommendations
+  const generateScenarioRecommendations = async (): Promise<ScenarioRecommendationsResult | null> => {
+    if (!predictionResult) return null;
+
+    setScenarioRecommendationsLoading(true);
+    setScenarioRecommendationsError(null);
+
+    const fin = customerValueFinancials || calculateCustomerValueFinancials(customerProfile);
+    const churnRiskCat: 'High' | 'Low' = 
+      (predictionResult.risk_level === 'High' || predictionResult.churn_probability >= 0.50) ? 'High' : 'Low';
+    const valueCat: 'High' | 'Low' = 
+      (customerValueSegment === 'High Value' || (customerValueFinancials?.estimatedCustomerValue ?? 0) >= 10000000) ? 'High' : 'Low';
+    const decision = finalDecisionAnalysis?.finalDecision || determineFinalDecision(churnRiskCat, valueCat);
+
+    try {
+      const res = await fetch('/api/scenarios/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerProfile,
+          predictionResult,
+          customerValue: {
+            customerValueSegment,
+            estimatedCustomerValue: fin.estimatedCustomerValue,
+            monthlyCharges: fin.monthlyCharges,
+            expectedRemainingMonths: fin.expectedRemainingMonths,
+          },
+          decisionFramework: {
+            finalDecision: decision,
+            businessInterpretation: finalDecisionAnalysis?.businessInterpretation || '',
+            primaryRetentionStrategy: finalDecisionAnalysis?.primaryRetentionStrategy || '',
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate scenario recommendations');
+      }
+
+      const result: ScenarioRecommendationsResult = {
+        scenarios: data.scenarios || [],
+        recommendedScenarioId: data.recommended_scenario_id || 'base-case',
+        recommendedScenarioName: data.recommended_scenario_name || 'Base Case Scenario',
+        recommendationExplanation: data.recommendation_explanation || '',
+        engine: data.engine || 'gemini-3.8-flash',
+        cachedAt: new Date().toLocaleTimeString(),
+      };
+
+      setScenarioRecommendations(result);
+      setScenarioRecommendationsLoading(false);
+      setCompletedModules(prev => ({ ...prev, 'scenario-view': true }));
+      return result;
+    } catch (err: any) {
+      setScenarioRecommendationsError(err.message || 'Failed to generate retention scenarios');
+      setScenarioRecommendationsLoading(false);
+      return null;
+    }
+  };
+
+  // Calculate Automated Retention ROI Analysis
+  const calculateAutomatedRoi = async (): Promise<AutomatedRoiAnalysis | null> => {
+    if (!predictionResult) return null;
+
+    setAutomatedRoiLoading(true);
+    setAutomatedRoiError(null);
+
+    const fin = customerValueFinancials || calculateCustomerValueFinancials(customerProfile);
+    const totalVal = fin.estimatedCustomerValue;
+
+    const conservativeFin = computeScenarioFinancials(totalVal, 'conservative', 'Conservative Scenario');
+    const baseCaseFin = computeScenarioFinancials(totalVal, 'base-case', 'Base Case Scenario');
+    const optimisticFin = computeScenarioFinancials(totalVal, 'optimistic', 'Optimistic Scenario');
+
+    const scenariosFinancials = {
+      conservative: conservativeFin,
+      'base-case': baseCaseFin,
+      optimistic: optimisticFin,
+    };
+
+    const recId = scenarioRecommendations?.recommendedScenarioId || 'base-case';
+    const recName = scenarioRecommendations?.recommendedScenarioName || 'Base Case Scenario';
+    const recommendedFin = scenariosFinancials[recId];
+
+    const churnRiskCat: 'High' | 'Low' = 
+      (predictionResult.risk_level === 'High' || predictionResult.churn_probability >= 0.50) ? 'High' : 'Low';
+    const valueCat: 'High' | 'Low' = 
+      (customerValueSegment === 'High Value' || totalVal >= 10000000) ? 'High' : 'Low';
+    const decision = finalDecisionAnalysis?.finalDecision || determineFinalDecision(churnRiskCat, valueCat);
+
+    try {
+      const res = await fetch('/api/roi/interpret', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerProfile,
+          predictionResult,
+          customerValue: {
+            estimatedCustomerValue: totalVal,
+            monthlyCharges: fin.monthlyCharges,
+            expectedRemainingMonths: fin.expectedRemainingMonths,
+            customerValueSegment,
+          },
+          decisionFramework: {
+            finalDecision: decision,
+            primaryRetentionStrategy: finalDecisionAnalysis?.primaryRetentionStrategy || '',
+          },
+          scenarioView: {
+            recommendedScenarioId: recId,
+            recommendedScenarioName: recName,
+          },
+          financials: {
+            estimatedCustomerValue: totalVal,
+            scenarios: scenariosFinancials,
+            recommended: recommendedFin,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to interpret ROI calculations');
+      }
+
+      const result: AutomatedRoiAnalysis = {
+        estimatedCustomerValue: totalVal,
+        monthlyCharges: fin.monthlyCharges,
+        expectedRemainingMonths: fin.expectedRemainingMonths,
+        scenariosFinancials,
+        recommendedScenarioId: recId,
+        recommendedScenarioName: recName,
+        recommendedFinancials: recommendedFin,
+        businessInterpretation: data.business_interpretation,
+        financialRationale: data.financial_rationale,
+        cachedAt: new Date().toLocaleTimeString(),
+        engine: data.engine || 'gemini-3.8-flash',
+      };
+
+      setAutomatedRoiAnalysis(result);
+      setAutomatedRoiLoading(false);
+      setCompletedModules(prev => ({ ...prev, 'roi-calculation': true }));
+      return result;
+    } catch (err: any) {
+      setAutomatedRoiError(err.message || 'Failed to calculate retention ROI');
+      setAutomatedRoiLoading(false);
+      return null;
+    }
+  };
 
   // Scenario Simulator
   const updateScenarioField = <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => {
@@ -574,6 +1003,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         predictionLoading,
         predictionError,
         predictCustomerChurn,
+        customerValueFinancials,
+        customerValueAiAssessment,
+        customerValueAiLoading,
+        customerValueAiError,
+        assessCustomerValue,
         valueSettings,
         updateValueSettings,
         estimatedHistoricalRevenue,
@@ -583,6 +1017,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         quadrantConfigs,
         updateQuadrantConfig,
         activeQuadrantId,
+        finalDecisionAnalysis,
+        finalDecisionLoading,
+        finalDecisionError,
+        generateFinalDecision,
+        scenarioRecommendations,
+        scenarioRecommendationsLoading,
+        scenarioRecommendationsError,
+        generateScenarioRecommendations,
         scenarioProfile,
         updateScenarioField,
         scenarioPrediction,
@@ -590,6 +1032,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         scenarioError,
         runScenarioSimulation,
         syncScenarioWithOriginal,
+        // Automated ROI Analysis
+        automatedRoiAnalysis,
+        automatedRoiLoading,
+        automatedRoiError,
+        calculateAutomatedRoi,
         roiAssumptions,
         updateRoiAssumptions,
         roiResults,

@@ -47,26 +47,28 @@ export const ChurnPredictionTab: React.FC = () => {
   const handleFieldChange = (field: keyof CustomerProfile, val: any) => {
     updateCustomerField(field, val);
 
-    // Immediate feedback for numerical fields: disallow 0
+    // Immediate feedback for numerical fields: clear error on valid positive integer entry
     if (
       field === 'tenureMonths' ||
       field === 'monthlyCharges' ||
       field === 'age' ||
       field === 'total_support_interactions'
     ) {
-      if (val === 0) {
-        const labels: Record<string, string> = {
-          tenureMonths: 'Tenure Months',
-          monthlyCharges: 'Monthly Charges',
-          age: 'Customer Age',
-          total_support_interactions: 'Support Interactions',
-        };
+      if (typeof val === 'number' && val > 0 && Number.isInteger(val)) {
+        if (validationErrors[field]) {
+          setValidationErrors(prev => {
+            const next = { ...prev };
+            delete next[field];
+            return next;
+          });
+        }
+      } else if (val === 0 || (typeof val === 'number' && val < 0)) {
         setValidationErrors(prev => ({
           ...prev,
-          [field]: `${labels[field]} must be greater than 0 (zero is not allowed).`
+          [field]: 'Please enter a value greater than 0.'
         }));
-        return;
       }
+      return;
     }
 
     if (field === 'region') {
@@ -93,36 +95,25 @@ export const ChurnPredictionTab: React.FC = () => {
     const errors: Record<string, string> = {};
 
     // Numerical validation: strictly > 0 required, 0 is disallowed and fails validation
-    if (customerProfile.tenureMonths === '' || customerProfile.tenureMonths === undefined || customerProfile.tenureMonths === null) {
-      errors.tenureMonths = 'Tenure Months is required (e.g. 1).';
-    } else if (Number(customerProfile.tenureMonths) === 0) {
-      errors.tenureMonths = 'Tenure Months must be greater than 0 (zero is not allowed).';
-    } else if (Number(customerProfile.tenureMonths) < 0) {
-      errors.tenureMonths = 'Tenure Months must be greater than 0.';
-    }
+    const numFields: Array<keyof CustomerProfile> = [
+      'tenureMonths',
+      'monthlyCharges',
+      'age',
+      'total_support_interactions',
+    ];
 
-    if (customerProfile.monthlyCharges === '' || customerProfile.monthlyCharges === undefined || customerProfile.monthlyCharges === null) {
-      errors.monthlyCharges = 'Monthly Charges is required (e.g. 100,000).';
-    } else if (Number(customerProfile.monthlyCharges) === 0) {
-      errors.monthlyCharges = 'Monthly Charges must be greater than 0 (zero is not allowed).';
-    } else if (Number(customerProfile.monthlyCharges) < 0) {
-      errors.monthlyCharges = 'Monthly Charges must be greater than 0.';
-    }
-
-    if (customerProfile.age === '' || customerProfile.age === undefined || customerProfile.age === null) {
-      errors.age = 'Customer Age is required (e.g. 22).';
-    } else if (Number(customerProfile.age) === 0) {
-      errors.age = 'Customer Age must be greater than 0 (zero is not allowed).';
-    } else if (Number(customerProfile.age) < 0) {
-      errors.age = 'Customer Age must be greater than 0.';
-    }
-
-    if (customerProfile.total_support_interactions === '' || customerProfile.total_support_interactions === undefined || customerProfile.total_support_interactions === null) {
-      errors.total_support_interactions = 'Support Interactions is required (e.g. 2).';
-    } else if (Number(customerProfile.total_support_interactions) === 0) {
-      errors.total_support_interactions = 'Support Interactions must be greater than 0 (zero is not allowed).';
-    } else if (Number(customerProfile.total_support_interactions) < 0) {
-      errors.total_support_interactions = 'Support Interactions must be greater than 0.';
+    for (const f of numFields) {
+      const v = customerProfile[f];
+      if (v === '' || v === undefined || v === null) {
+        errors[f] = 'This field is required.';
+      } else {
+        const num = Number(v);
+        if (isNaN(num) || !Number.isInteger(num)) {
+          errors[f] = 'Only positive whole numbers are allowed.';
+        } else if (num <= 0) {
+          errors[f] = 'Please enter a value greater than 0.';
+        }
+      }
     }
 
     // Categorical dropdown validation

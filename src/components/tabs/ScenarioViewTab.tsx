@@ -1,33 +1,41 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { 
   SlidersHorizontal, 
   ArrowRight, 
-  RotateCcw, 
-  RefreshCw, 
-  TrendingDown, 
-  TrendingUp, 
-  Minus, 
-  Info, 
+  Lock, 
+  CheckCircle2, 
   Sparkles, 
-  Lock,
-  CheckCircle2,
-  Lightbulb,
+  RefreshCw, 
+  TrendingUp, 
+  ShieldCheck, 
+  Award, 
+  Zap, 
+  AlertTriangle, 
+  DollarSign, 
+  Calendar, 
+  Info,
+  CheckCircle,
+  Star,
+  Target,
+  ArrowUpRight,
+  BookmarkCheck,
   Check
 } from 'lucide-react';
-import { useCustomer } from '../../context/CustomerContext';
-import { FormattedNumberInput } from '../common/FormattedNumberInput';
+import { useCustomer, calculateCustomerValueFinancials, determineFinalDecision } from '../../context/CustomerContext';
+import { RetentionScenarioItem } from '../../types';
 
 export const ScenarioViewTab: React.FC = () => {
   const { 
     customerProfile, 
     predictionResult, 
-    scenarioProfile, 
-    updateScenarioField, 
-    scenarioPrediction, 
-    isScenarioSimulating, 
-    scenarioError, 
-    runScenarioSimulation, 
-    syncScenarioWithOriginal,
+    customerValueFinancials,
+    customerValueAiAssessment,
+    customerValueSegment,
+    finalDecisionAnalysis,
+    scenarioRecommendations,
+    scenarioRecommendationsLoading,
+    scenarioRecommendationsError,
+    generateScenarioRecommendations,
     completedModules,
     completeModule,
     setActiveTab
@@ -41,8 +49,70 @@ export const ScenarioViewTab: React.FC = () => {
     }).format(val);
   };
 
-  // Guard: Prerequisite check
-  if (!predictionResult || !completedModules['customer-value'] || !completedModules['decision-framework']) {
+  // Guard 1: Churn Prediction prerequisite
+  if (!predictionResult) {
+    return (
+      <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Lock className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+            Prerequisite Required
+          </span>
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            Please complete Churn Prediction first
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Scenario View requires churn risk predictions to model comparative retention intervention scenarios.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => setActiveTab('prediction')}
+            className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+          >
+            <span>Go to Churn Prediction</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 2: Customer Value prerequisite
+  if (!completedModules['customer-value'] && !customerValueAiAssessment) {
+    return (
+      <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Lock className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+            Prerequisite Required
+          </span>
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            Please complete Customer Value analysis first
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Customer economic valuation is required to evaluate cost-effective retention spending across scenarios.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => setActiveTab('customer-value')}
+            className="py-3 px-6 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20"
+          >
+            <span>Go to Customer Value</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard 3: Decision Framework prerequisite
+  if (!completedModules['decision-framework'] && !finalDecisionAnalysis) {
     return (
       <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
@@ -56,7 +126,7 @@ export const ScenarioViewTab: React.FC = () => {
             Please complete Decision Framework first
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            The Scenario View simulator requires establishing the baseline churn prediction, value tier, and decision framework retention strategy before simulating what-if sensitivity.
+            The Decision Framework must establish the customer&apos;s overarching strategic decision before generating tailored retention scenarios.
           </p>
         </div>
         <div className="pt-2">
@@ -72,9 +142,87 @@ export const ScenarioViewTab: React.FC = () => {
     );
   }
 
-  const originalProb = predictionResult ? predictionResult.churn_probability : null;
-  const simulatedProb = scenarioPrediction ? scenarioPrediction.churn_probability : null;
-  const probDiff = (originalProb !== null && simulatedProb !== null) ? (simulatedProb - originalProb) : null;
+  // Calculate upstream values
+  const churnRiskCat: 'High' | 'Low' = 
+    (predictionResult.risk_level === 'High' || predictionResult.churn_probability >= 0.50) ? 'High' : 'Low';
+  
+  const valueCat: 'High' | 'Low' = 
+    (customerValueSegment === 'High Value' || (customerValueFinancials?.estimatedCustomerValue ?? 0) >= 10000000) ? 'High' : 'Low';
+
+  const finalDecision = finalDecisionAnalysis?.finalDecision || determineFinalDecision(churnRiskCat, valueCat);
+  const financials = customerValueFinancials || calculateCustomerValueFinancials(customerProfile);
+
+  // Automatic scenario recommendations generation hook
+  useEffect(() => {
+    if (
+      predictionResult &&
+      !scenarioRecommendations &&
+      !scenarioRecommendationsLoading &&
+      !scenarioRecommendationsError
+    ) {
+      generateScenarioRecommendations();
+    }
+  }, [predictionResult, scenarioRecommendations, scenarioRecommendationsLoading, scenarioRecommendationsError]);
+
+  const handleCompleteAndProceed = () => {
+    completeModule('scenario-view', true);
+  };
+
+  // Default fallback scenarios if loading or during transition
+  const displayScenarios: RetentionScenarioItem[] = useMemo(() => {
+    if (scenarioRecommendations?.scenarios && scenarioRecommendations.scenarios.length === 3) {
+      return scenarioRecommendations.scenarios;
+    }
+    return [
+      {
+        id: 'conservative',
+        name: 'Conservative Scenario',
+        interventionLevel: 'Low-Cost Digital Intervention',
+        assumedSuccessRate: 20,
+        assumedSuccessRateLabel: '20% (Assumed Retention Success Rate)',
+        recommendedActions: [
+          'Automated multi-channel push and SMS alerts highlighting current plan benefits.',
+          'Targeted digital self-service contract renewal voucher (Rp 50,000 app credit).',
+          'Streamlined 1-click in-app contract extension workflow with zero administrative friction.'
+        ],
+        expectedBusinessImpact: 'Maintains low marginal retention cost with an estimated 20% assumed renewal rate, preserving operational margins.',
+        rationale: 'Establishes a cost-effective, automated safety net without deploying costly frontline personnel or substantial rate discounts.'
+      },
+      {
+        id: 'base-case',
+        name: 'Base Case Scenario',
+        interventionLevel: 'Moderate Targeted Campaign',
+        assumedSuccessRate: 35,
+        assumedSuccessRateLabel: '35% (Assumed Retention Success Rate)',
+        recommendedActions: [
+          `Proactive customer care outreach offering a tailored 10% rate discount on a 12-month commitment.`,
+          'Complimentary 3-month high-speed data tier upgrade to elevate perceived network utility.',
+          'Dedicated onboarding re-engagement sequence addressing unresolved support feedback.'
+        ],
+        expectedBusinessImpact: 'Delivers a balanced trade-off between intervention expense and subscriber retention with an assumed 35% success probability.',
+        rationale: 'Provides the standard enterprise planning benchmark, combining personalized human touch with moderate value incentives.'
+      },
+      {
+        id: 'optimistic',
+        name: 'Optimistic Scenario',
+        interventionLevel: 'High-Touch Executive VIP Engagement',
+        assumedSuccessRate: 50,
+        assumedSuccessRateLabel: '50% (Assumed Retention Success Rate)',
+        recommendedActions: [
+          'Direct phone consultation by a Senior Customer Success Specialist with customized renewal terms.',
+          'Full VIP loyalty bundle: 15% discount for 12 months, hardware router upgrade, and streaming package perk.',
+          'Priority SLA guarantee with direct routing to senior technical tier for all future interactions.'
+        ],
+        expectedBusinessImpact: 'Maximizes customer retention probability (assumed 50% success) and protects high-value recurring revenue, justifying elevated intervention costs.',
+        rationale: 'Aggressive retention investment designed to eliminate churn vulnerability for high-contribution accounts where defection creates severe financial impact.'
+      }
+    ];
+  }, [scenarioRecommendations]);
+
+  const recommendedId = scenarioRecommendations?.recommendedScenarioId || 'base-case';
+  const recommendedName = scenarioRecommendations?.recommendedScenarioName || 'Base Case Scenario';
+  const recommendationExplanation = scenarioRecommendations?.recommendationExplanation || 
+    `Based on the customer's churn risk (${churnRiskCat}) and customer value tier (${valueCat}), the recommended scenario provides the most balanced economic trade-off, directly aligned with the ${finalDecision} decision.`;
 
   return (
     <div className="space-y-6">
@@ -87,365 +235,264 @@ export const ScenarioViewTab: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white">
-                Step 4: What-If Scenario Simulator
+                Step 4: Automated Retention Strategy Scenarios
               </h3>
-              {scenarioPrediction && (
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.2 rounded font-mono font-medium flex items-center gap-1">
+              <span className="text-[10px] bg-orange-500/15 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5" />
+                AI Generated
+              </span>
+              {completedModules['scenario-view'] && (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-medium flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Scenario Analyzed
+                  Completed
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400">
-              Run at least one scenario simulation to unlock the Retention Campaign ROI Calculator.
+            <p className="text-xs text-slate-400 mt-0.5">
+              Three comparative retention scenarios modeled automatically from Churn Prediction, Customer Value, and Decision Framework.
             </p>
           </div>
         </div>
 
-        {scenarioPrediction && (
-          <button
-            onClick={() => completeModule('scenario-view', true)}
-            className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
-          >
-            <span>Proceed to ROI Calculation</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={handleCompleteAndProceed}
+          className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
+        >
+          <span>Proceed to ROI Calculation</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Disclaimer / Non-Causal AI Estimate Notice */}
-      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-start gap-3.5">
-        <Info className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+      {/* Upstream Synthesis Snapshot (Read-Only) */}
+      <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-orange-400" />
+            Synthesized Upstream Context
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">
+            Read-Only &bull; No Manual Inputs Required
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1.5 font-mono">
+            <span className="text-slate-400">Churn Risk:</span>
+            <strong className={churnRiskCat === 'High' ? 'text-red-400' : 'text-emerald-400'}>
+              {churnRiskCat} ({(predictionResult.churn_probability * 100).toFixed(1)}%)
+            </strong>
+          </div>
+
+          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1.5 font-mono">
+            <span className="text-slate-400">Customer Value:</span>
+            <strong className={valueCat === 'High' ? 'text-emerald-400' : 'text-slate-200'}>
+              {valueCat} ({formatIDR(financials.estimatedCustomerValue)})
+            </strong>
+          </div>
+
+          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1.5 font-mono">
+            <span className="text-slate-400">Decision Framework:</span>
+            <strong className="text-orange-400">
+              {finalDecision}
+            </strong>
+          </div>
+
+          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1.5 font-mono">
+            <span className="text-slate-400">Monthly Billing:</span>
+            <strong className="text-white">
+              {formatIDR(financials.monthlyCharges)} ({customerProfile.contractType || 'contract'})
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Assumptions Labeling Banner */}
+      <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-start gap-3">
+        <Info className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
         <div className="text-xs text-slate-300 space-y-1">
           <div className="font-bold text-white flex items-center gap-2">
-            <span>What-If Scenario Simulator &bull; Non-Causal AI Sensitivity Analysis</span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 font-mono">
-              AI-Estimated Scenarios
+            <span>Illustrative Scenario Planning Framework</span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20 font-mono">
+              Planning Assumptions
             </span>
           </div>
-          <p className="leading-relaxed">
-            Modify subscriber characteristics below and trigger a new Gemini AI assessment to observe how directional shifts influence estimated churn propensity.
-            <strong className="text-white"> Important Note:</strong> Scenario changes are AI-generated estimates based on customer attributes and business reasoning; they do not represent statistically proven causal effects.
+          <p className="leading-relaxed text-slate-400">
+            The reference values below (20%, 35%, and 50%) are clearly designated as <strong className="text-white">&ldquo;Assumed Retention Success Rates&rdquo;</strong> for business scenario planning and sensitivity modeling. They represent structured planning assumptions rather than empirical statistical certainty.
           </p>
         </div>
       </div>
 
-      {/* Control Actions Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
-            <SlidersHorizontal className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-white">
-              Attribute Sensitivity Testing
-            </h4>
-            <p className="text-xs text-slate-400">
-              Modify contract terms, pricing, or support history to generate a new AI churn estimate.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-center">
-          <button
-            onClick={syncScenarioWithOriginal}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-            Reset to Original Profile
-          </button>
-          <button
-            onClick={runScenarioSimulation}
-            disabled={isScenarioSimulating}
-            className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-orange-500/20"
-          >
-            {isScenarioSimulating ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
-                <span>Gemini Re-Evaluating Scenario...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-slate-950" />
-                <span>GENERATE SCENARIO ESTIMATE</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Simulation Error Alert */}
-      {scenarioError && (
-        <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/40 text-red-200 text-xs">
-          {scenarioError}
+      {/* Loading state during AI generation */}
+      {scenarioRecommendationsLoading && (
+        <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3">
+          <RefreshCw className="w-7 h-7 text-orange-400 animate-spin mx-auto" />
+          <h4 className="text-sm font-bold text-white">
+            Gemini AI is generating tailored retention scenarios...
+          </h4>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            Structuring Conservative, Base Case, and Optimistic retention playbooks customized to the customer&apos;s risk drivers and decision framework directive.
+          </p>
         </div>
       )}
 
-      {/* Side-by-Side Comparison: Original Profile vs Scenario Profile */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT: Original Customer Profile */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <div>
-              <span className="text-[10px] font-mono uppercase text-slate-400">
-                Baseline Attributes
-              </span>
-              <h4 className="text-base font-bold text-white">
-                Original Customer Profile
-              </h4>
-            </div>
-            {predictionResult ? (
-              <span className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
-                predictionResult.risk_level === 'High' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                predictionResult.risk_level === 'Medium' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              }`}>
-                {predictionResult.risk_level} Risk &bull; {(predictionResult.churn_probability * 100).toFixed(1)}%
-              </span>
-            ) : (
-              <span className="text-[11px] text-slate-400 italic">
-                Awaiting original prediction
-              </span>
-            )}
-          </div>
+      {/* 6. Three Scenario Recommendation Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {displayScenarios.map((scenario) => {
+          const isBaseCase = scenario.id === 'base-case';
+          const isRecommended = scenario.id === recommendedId;
 
-          {/* Key Parameters List */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Tenure</span>
-              <div className="text-sm font-bold text-white mt-0.5">{customerProfile.tenureMonths} Months</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Monthly Charges</span>
-              <div className="text-sm font-bold text-orange-300 mt-0.5">{formatIDR(Number(customerProfile.monthlyCharges) || 0)}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Contract Type</span>
-              <div className="text-sm font-bold text-white mt-0.5">{customerProfile.contractType}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Internet Service</span>
-              <div className="text-sm font-bold text-white mt-0.5">{customerProfile.hasInternetService}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Payment Method</span>
-              <div className="text-sm font-bold text-white mt-0.5 truncate">{customerProfile.paymentMethod}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Support Interactions</span>
-              <div className="text-sm font-bold text-white mt-0.5">{customerProfile.total_support_interactions} ticket(s)</div>
-            </div>
-          </div>
+          return (
+            <div
+              key={scenario.id}
+              className={`p-6 rounded-2xl border flex flex-col justify-between transition-all relative overflow-hidden ${
+                isBaseCase
+                  ? 'bg-slate-900 border-amber-500/50 ring-1 ring-amber-500/30 shadow-lg shadow-amber-950/20'
+                  : scenario.id === 'optimistic'
+                  ? 'bg-slate-900 border-emerald-500/30'
+                  : 'bg-slate-900 border-slate-800'
+              }`}
+            >
+              {/* Top Banner Tag for Base Case (Primary Planning Scenario) */}
+              {isBaseCase && (
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-amber-600 text-slate-950 text-[9px] font-black uppercase px-3 py-0.5 rounded-bl-lg flex items-center gap-1 shadow-sm">
+                  <Star className="w-2.5 h-2.5 fill-current" />
+                  Primary Planning Scenario
+                </div>
+              )}
 
-          {/* Probability Bar */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="font-semibold text-slate-300">Original Churn Probability</span>
-              <span className="font-mono text-white font-bold">
-                {originalProb !== null ? `${(originalProb * 100).toFixed(1)}%` : 'Not evaluated'}
-              </span>
-            </div>
-            <div className="h-3 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  predictionResult?.risk_level === 'High' ? 'bg-red-500' :
-                  predictionResult?.risk_level === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${originalProb !== null ? (originalProb * 100) : 0}%` }}
-              />
-            </div>
-          </div>
-        </div>
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                      Scenario Tier
+                    </span>
+                    {isRecommended && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
+                        <Check className="w-2.5 h-2.5" />
+                        Selected Best Fit
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-lg font-black text-white tracking-tight">
+                    {scenario.name}
+                  </h4>
+                  <div className="text-xs font-semibold text-orange-400 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>{scenario.interventionLevel}</span>
+                  </div>
+                </div>
 
-        {/* RIGHT: Scenario Customer Profile */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <div>
-              <span className="text-[10px] font-mono uppercase text-orange-400 font-bold">
-                Alternative Scenario
-              </span>
-              <h4 className="text-base font-bold text-white">
-                Scenario Customer Profile
-              </h4>
-            </div>
-            {scenarioPrediction ? (
-              <span className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
-                scenarioPrediction.risk_level === 'High' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                scenarioPrediction.risk_level === 'Medium' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              }`}>
-                {scenarioPrediction.risk_level} Risk &bull; {(scenarioPrediction.churn_probability * 100).toFixed(1)}%
-              </span>
-            ) : (
-              <span className="text-[11px] text-orange-400 font-mono">
-                Click Generate to estimate
-              </span>
-            )}
-          </div>
+                {/* Assumed Retention Success Rate KPI Banner */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                  <div className="text-[10px] font-mono uppercase text-slate-400 flex items-center justify-between">
+                    <span>Planning Metric:</span>
+                    <span className="text-slate-500 font-sans italic text-[9px]">Illustrative Assumption</span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <div className="text-2xl font-black font-mono text-white">
+                      {scenario.assumedSuccessRate}%
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400 font-medium">
+                      Assumed Retention Success Rate
+                    </span>
+                  </div>
+                </div>
 
-          {/* Interactive Modifiable Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-            {/* 1. Contract Type Modification */}
-            <div className="space-y-1 sm:col-span-2">
-              <div className="flex justify-between">
-                <label className="font-semibold text-slate-300">Contract Type Strategy</label>
-                <span className="text-[10px] text-orange-400">e.g. Upgrade to 1 or 2 Year</span>
+                {/* Recommended Retention Actions */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Recommended Retention Actions
+                  </span>
+                  <div className="space-y-2">
+                    {scenario.recommendedActions.map((action, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 mt-1.5" />
+                        <span className="leading-relaxed">{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Expected Business Impact */}
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-mono uppercase text-slate-400 font-semibold">
+                    Expected Business Impact:
+                  </span>
+                  <p className="text-xs text-slate-300 leading-snug">
+                    {scenario.expectedBusinessImpact}
+                  </p>
+                </div>
+
+                {/* Rationale behind scenario */}
+                <div className="text-[11px] text-slate-400 italic leading-relaxed pt-1 border-t border-slate-800/80">
+                  <strong className="text-slate-300 font-semibold not-italic">Scenario Rationale:</strong> {scenario.rationale}
+                </div>
               </div>
-              <select
-                value={scenarioProfile.contractType}
-                onChange={(e) => updateScenarioField('contractType', e.target.value as any)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white cursor-pointer font-medium"
-              >
-                <option value="Month-to-month">Month-to-month</option>
-                <option value="One year">One year</option>
-                <option value="Two year">Two year</option>
-              </select>
             </div>
-
-            {/* 2. Monthly Charges Modification */}
-            <FormattedNumberInput
-              label="Monthly Charges (IDR)"
-              placeholder="e.g. 445,000"
-              prefix="IDR"
-              value={scenarioProfile.monthlyCharges}
-              onChange={(val) => updateScenarioField('monthlyCharges', val)}
-            />
-
-            {/* 3. Support Interactions */}
-            <FormattedNumberInput
-              label="Support Interactions"
-              placeholder="e.g. 2"
-              unit="ticket(s)"
-              value={scenarioProfile.total_support_interactions}
-              onChange={(val) => updateScenarioField('total_support_interactions', val)}
-            />
-
-            {/* 4. Tenure Months */}
-            <FormattedNumberInput
-              label="Tenure Months"
-              placeholder="e.g. 14"
-              unit="mo"
-              value={scenarioProfile.tenureMonths}
-              onChange={(val) => updateScenarioField('tenureMonths', val)}
-            />
-
-            {/* 5. Payment Method */}
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-300">Payment Method</label>
-              <select
-                value={scenarioProfile.paymentMethod}
-                onChange={(e) => updateScenarioField('paymentMethod', e.target.value as any)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white cursor-pointer"
-              >
-                <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
-                <option value="Credit card (automatic)">Credit card (automatic)</option>
-                <option value="Electronic check">Electronic check</option>
-                <option value="Mailed check">Mailed check</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Scenario Probability Bar */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="font-semibold text-slate-300">Scenario Churn Probability</span>
-              <span className="font-mono text-orange-400 font-bold">
-                {simulatedProb !== null ? `${(simulatedProb * 100).toFixed(1)}%` : 'Run scenario to assess'}
-              </span>
-            </div>
-            <div className="h-3 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  scenarioPrediction?.risk_level === 'High' ? 'bg-red-500' :
-                  scenarioPrediction?.risk_level === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${simulatedProb !== null ? (simulatedProb * 100) : 0}%` }}
-              />
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      {/* Probability Difference & Scenario Recommendations */}
-      {probDiff !== null && scenarioPrediction && predictionResult && (
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-orange-400" />
-              <span>Scenario Comparison &amp; AI Recommendations</span>
-            </h4>
-            <span className="text-xs text-slate-400 font-mono">
-              {predictionResult.risk_level} &rarr; {scenarioPrediction.risk_level}
+      {/* 7. Highlighted Section: Recommended Retention Scenario */}
+      <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-orange-950/20 to-slate-900 border border-orange-500/40 shadow-xl space-y-4 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 font-black shadow-inner shrink-0">
+              <BookmarkCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-orange-400 font-bold">
+                Strategic Recommendation Selection
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                <span>Recommended Retention Scenario:</span>
+                <span className="text-orange-400">{recommendedName}</span>
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-400">
+              Aligned with: <strong className="text-white">{finalDecision}</strong>
             </span>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-              <div className="text-[10px] text-slate-500 uppercase font-semibold">Original Churn Prob</div>
-              <div className="text-2xl font-black font-mono text-white mt-1">
-                {(predictionResult.churn_probability * 100).toFixed(1)}%
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">{predictionResult.risk_level} Risk</div>
-            </div>
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+            Why This Scenario Is Most Suitable For This Customer
+          </h4>
+          <p className="text-xs text-slate-200 leading-relaxed bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+            {recommendationExplanation}
+          </p>
+        </div>
 
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-              <div className="text-[10px] text-slate-500 uppercase font-semibold">Scenario Churn Prob</div>
-              <div className="text-2xl font-black font-mono text-orange-400 mt-1">
-                {(scenarioPrediction.churn_probability * 100).toFixed(1)}%
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">{scenarioPrediction.risk_level} Risk</div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-              <div className="text-[10px] text-slate-500 uppercase font-semibold">Difference (Percentage Points)</div>
-              <div className={`text-2xl font-black font-mono mt-1 flex items-center justify-center gap-1 ${
-                probDiff < 0 ? 'text-emerald-400' : probDiff > 0 ? 'text-red-400' : 'text-slate-300'
-              }`}>
-                {probDiff < 0 ? <TrendingDown className="w-5 h-5" /> : probDiff > 0 ? <TrendingUp className="w-5 h-5" /> : <Minus className="w-5 h-5" />}
-                {probDiff > 0 ? '+' : ''}{(probDiff * 100).toFixed(1)}%
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">
-                {probDiff < 0 ? 'Lower estimated churn' : probDiff > 0 ? 'Higher estimated churn' : 'No change'}
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-              <div className="text-[10px] text-slate-500 uppercase font-semibold">Updated Risk Level</div>
-              <div className="text-sm font-bold text-white mt-2 flex items-center justify-center gap-1.5">
-                <span className="text-slate-400">{predictionResult.risk_level}</span>
-                <ArrowRight className="w-3.5 h-3.5 text-orange-400" />
-                <span className={
-                  scenarioPrediction.risk_level === 'High' ? 'text-red-400' :
-                  scenarioPrediction.risk_level === 'Medium' ? 'text-amber-400' : 'text-emerald-400'
-                }>
-                  {scenarioPrediction.risk_level}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">
-                {predictionResult.risk_level !== scenarioPrediction.risk_level ? 'Risk level migrated' : 'Remained in bracket'}
-              </div>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400">Intervention Level:</span>
+            <strong className="text-white font-mono">
+              {displayScenarios.find(s => s.id === recommendedId)?.interventionLevel || 'Tailored'}
+            </strong>
           </div>
 
-          {/* Scenario Recommendations */}
-          {scenarioPrediction.retention_recommendations?.length > 0 && (
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Lightbulb className="w-4 h-4 text-orange-400" />
-                <span>Scenario Recommendations (Gemini AI)</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-300">
-                {scenarioPrediction.retention_recommendations.map((rec, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>{rec}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400">Assumed Success Rate:</span>
+            <strong className="text-orange-400 font-mono">
+              {displayScenarios.find(s => s.id === recommendedId)?.assumedSuccessRate}%
+            </strong>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400">Economic Protection:</span>
+            <strong className="text-emerald-400 font-mono">
+              {formatIDR(financials.estimatedCustomerValue)}
+            </strong>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -78,6 +78,70 @@ export interface ValueSegmentationSettings {
 
 export type CustomerValueSegment = 'High Value' | 'Medium Value' | 'Low Value';
 
+export interface CustomerValueFinancials {
+  monthlyCharges: number;
+  tenureMonths: number;
+  expectedRemainingMonths: number;
+  estimatedCustomerValue: number;
+  calculationBreakdown: {
+    baseContractMonths: number;
+    tenureBonusMonths: number;
+    bundlingBonusMonths: number;
+  };
+}
+
+export interface CustomerValueAiAssessment {
+  customer_value_segment: CustomerValueSegment;
+  customer_value_assessment: string;
+  key_value_drivers: string[];
+  business_interpretation: string;
+  retention_strategy: {
+    tier_title: string;
+    primary_objective: string;
+    recommended_actions: string[];
+  };
+  cachedAt?: string;
+  engine?: string;
+}
+
+export type FinalDecisionLabel = 
+  | 'Priority Retention'
+  | 'Cost-Efficient Retention'
+  | 'Loyalty Enhancement'
+  | 'Standard Engagement';
+
+export interface FinalDecisionAnalysis {
+  churnRiskCategory: 'High' | 'Low';
+  valueCategory: 'High' | 'Low';
+  finalDecision: FinalDecisionLabel;
+  businessInterpretation: string;
+  businessRationale: string;
+  primaryRetentionStrategy: string;
+  recommendedActions: string[];
+  engine?: string;
+  cachedAt?: string;
+}
+
+export interface RetentionScenarioItem {
+  id: 'conservative' | 'base-case' | 'optimistic';
+  name: string;
+  interventionLevel: string;
+  assumedSuccessRate: number; // e.g. 20, 35, 50
+  assumedSuccessRateLabel: string;
+  recommendedActions: string[];
+  expectedBusinessImpact: string;
+  rationale: string;
+}
+
+export interface ScenarioRecommendationsResult {
+  scenarios: RetentionScenarioItem[];
+  recommendedScenarioId: 'conservative' | 'base-case' | 'optimistic';
+  recommendedScenarioName: string;
+  recommendationExplanation: string;
+  cachedAt?: string;
+  engine?: string;
+}
+
 export interface DecisionQuadrantConfig {
   id: 'high-risk-high-value' | 'high-risk-low-value' | 'low-risk-high-value' | 'low-risk-low-value';
   title: string;
@@ -88,6 +152,31 @@ export interface DecisionQuadrantConfig {
   priorityLevel: 'Immediate (P0)' | 'High (P1)' | 'Medium (P2)' | 'Standard (P3)';
   businessExplanation: string;
   tactics: string[];
+}
+
+export interface SingleScenarioFinancials {
+  id: 'conservative' | 'base-case' | 'optimistic';
+  name: string;
+  assumedSuccessRate: number; // 0.20, 0.35, 0.50
+  costPercentage: number; // 0.05, 0.10, 0.15
+  estimatedRetentionCost: number;
+  expectedRetainedValue: number;
+  expectedNetGain: number;
+  estimatedRoiPercentage: number;
+}
+
+export interface AutomatedRoiAnalysis {
+  estimatedCustomerValue: number;
+  monthlyCharges: number;
+  expectedRemainingMonths: number;
+  scenariosFinancials: Record<'conservative' | 'base-case' | 'optimistic', SingleScenarioFinancials>;
+  recommendedScenarioId: 'conservative' | 'base-case' | 'optimistic';
+  recommendedScenarioName: string;
+  recommendedFinancials: SingleScenarioFinancials;
+  businessInterpretation: string;
+  financialRationale: string;
+  cachedAt?: string;
+  engine?: string;
 }
 
 export interface RoiAssumptions {
@@ -103,4 +192,17 @@ export interface RoiResults {
   totalCampaignCost: number;
   netBenefit: number;
   roiPercentage: number;
+}
+
+export interface ExecutiveReportSynthesis {
+  executiveSummary: string;
+  strategicRecommendations: {
+    interventionPriority: string;
+    engagementApproach: string;
+    actionPlan: string[];
+    expectedBusinessImpact: string;
+    risksAndLimitations: string;
+  };
+  engine?: string;
+  cachedAt?: string;
 }

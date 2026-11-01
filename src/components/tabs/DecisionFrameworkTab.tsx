@@ -1,47 +1,43 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { 
   GitBranch, 
-  Sliders, 
-  Edit3, 
-  Save, 
-  ArrowRight,
-  Layers,
-  Check,
-  Lock,
-  CheckCircle2
+  ArrowRight, 
+  Lock, 
+  CheckCircle2, 
+  AlertTriangle, 
+  ShieldAlert, 
+  ShieldCheck, 
+  Award, 
+  Zap, 
+  Users, 
+  Sparkles, 
+  RefreshCw, 
+  TrendingUp, 
+  DollarSign, 
+  Calendar, 
+  Layers, 
+  FileText,
+  Target,
+  ArrowUpRight
 } from 'lucide-react';
-import { useCustomer } from '../../context/CustomerContext';
-import { DecisionQuadrantConfig } from '../../types';
+import { useCustomer, determineFinalDecision, calculateCustomerValueFinancials } from '../../context/CustomerContext';
+import { FinalDecisionLabel } from '../../types';
 
 export const DecisionFrameworkTab: React.FC = () => {
   const { 
+    customerProfile,
     predictionResult, 
-    estimatedHistoricalRevenue, 
-    decisionThresholds, 
-    updateDecisionThresholds,
-    quadrantConfigs, 
-    updateQuadrantConfig,
-    activeQuadrantId,
+    customerValueFinancials,
+    customerValueAiAssessment,
+    customerValueSegment,
+    finalDecisionAnalysis,
+    finalDecisionLoading,
+    finalDecisionError,
+    generateFinalDecision,
     completeModule,
     completedModules,
     setActiveTab
   } = useCustomer();
-
-  const [selectedQuadrantId, setSelectedQuadrantId] = useState<string>(activeQuadrantId);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<{
-    title: string;
-    recommendedAction: string;
-    priorityLevel: DecisionQuadrantConfig['priorityLevel'];
-    businessExplanation: string;
-    tacticsStr: string;
-  }>({
-    title: '',
-    recommendedAction: '',
-    priorityLevel: 'Immediate (P0)',
-    businessExplanation: '',
-    tacticsStr: '',
-  });
 
   const formatIDR = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -51,7 +47,7 @@ export const DecisionFrameworkTab: React.FC = () => {
     }).format(val);
   };
 
-  // Guard: Prerequisite check
+  // Guard 1: Churn Prediction prerequisite
   if (!predictionResult) {
     return (
       <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
@@ -66,7 +62,7 @@ export const DecisionFrameworkTab: React.FC = () => {
             Please complete Churn Prediction first
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            The Decision Framework 2×2 matrix requires at least one completed churn prediction to position the customer on the risk axis.
+            The Decision Framework requires Churn Prediction results to determine the customer&apos;s risk level.
           </p>
         </div>
         <div className="pt-2">
@@ -82,7 +78,8 @@ export const DecisionFrameworkTab: React.FC = () => {
     );
   }
 
-  if (!completedModules['customer-value']) {
+  // Guard 2: Customer Value prerequisite
+  if (!completedModules['customer-value'] && !customerValueAiAssessment) {
     return (
       <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center max-w-xl mx-auto space-y-4 my-8 shadow-2xl">
         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
@@ -96,7 +93,7 @@ export const DecisionFrameworkTab: React.FC = () => {
             Please complete Customer Value analysis first
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Customer Value analysis must be completed to establish subscriber revenue tiers before configuring retention playbooks.
+            Customer Value analysis must be completed to evaluate the customer&apos;s economic contribution before generating the final decision.
           </p>
         </div>
         <div className="pt-2">
@@ -112,45 +109,60 @@ export const DecisionFrameworkTab: React.FC = () => {
     );
   }
 
-  const handleSelectQuadrant = (id: string) => {
-    setSelectedQuadrantId(id);
-    setIsEditing(false);
-  };
+  // Calculate upstream values deterministically
+  const churnRiskCategory: 'High' | 'Low' = 
+    (predictionResult.risk_level === 'High' || predictionResult.churn_probability >= 0.50) ? 'High' : 'Low';
+  
+  const valueCategory: 'High' | 'Low' = 
+    (customerValueSegment === 'High Value' || (customerValueFinancials?.estimatedCustomerValue ?? 0) >= 10000000) ? 'High' : 'Low';
 
-  const startEditing = () => {
-    const config = quadrantConfigs[selectedQuadrantId];
-    setEditForm({
-      title: config.title,
-      recommendedAction: config.recommendedAction,
-      priorityLevel: config.priorityLevel,
-      businessExplanation: config.businessExplanation,
-      tacticsStr: config.tactics.join('\n'),
-    });
-    setIsEditing(true);
-  };
+  const exactFinalDecision: FinalDecisionLabel = determineFinalDecision(churnRiskCategory, valueCategory);
 
-  const saveEdits = () => {
-    const tactics = editForm.tacticsStr
-      .split('\n')
-      .map((t) => t.trim())
-      .filter(Boolean);
+  const financials = customerValueFinancials || calculateCustomerValueFinancials(customerProfile);
 
-    updateQuadrantConfig(selectedQuadrantId, {
-      title: editForm.title,
-      recommendedAction: editForm.recommendedAction,
-      priorityLevel: editForm.priorityLevel,
-      businessExplanation: editForm.businessExplanation,
-      tactics,
-    });
-    setIsEditing(false);
-  };
+  // Automatic generation hook
+  useEffect(() => {
+    if (predictionResult && !finalDecisionAnalysis && !finalDecisionLoading && !finalDecisionError) {
+      generateFinalDecision();
+    }
+  }, [predictionResult, finalDecisionAnalysis, finalDecisionLoading, finalDecisionError]);
 
   const handleCompleteAndProceed = () => {
     completeModule('decision-framework', true);
   };
 
-  const activeConfig = quadrantConfigs[selectedQuadrantId] || quadrantConfigs['high-risk-high-value'];
-  const customerProb = predictionResult?.churn_probability ?? 0.50;
+  // Matrix cells for the visual overview indicator
+  const matrixCells: Array<{
+    risk: 'High' | 'Low';
+    value: 'High' | 'Low';
+    decision: FinalDecisionLabel;
+    description: string;
+  }> = [
+    {
+      risk: 'High',
+      value: 'High',
+      decision: 'Priority Retention',
+      description: 'Personalized retention offers, loyalty incentives, and proactive customer engagement.',
+    },
+    {
+      risk: 'High',
+      value: 'Low',
+      decision: 'Cost-Efficient Retention',
+      description: 'Low-cost retention campaigns, automated engagement, and targeted promotions.',
+    },
+    {
+      risk: 'Low',
+      value: 'High',
+      decision: 'Loyalty Enhancement',
+      description: 'Loyalty benefits, premium customer experience, and long-term relationship development.',
+    },
+    {
+      risk: 'Low',
+      value: 'Low',
+      decision: 'Standard Engagement',
+      description: 'Cost-efficient standard engagement and regular communication.',
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -163,17 +175,21 @@ export const DecisionFrameworkTab: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white">
-                Step 3: Retention Decision Framework
+                Step 3: Strategic Decision Framework
               </h3>
+              <span className="text-[10px] bg-orange-500/15 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                <Target className="w-2.5 h-2.5" />
+                ONE Final Decision
+              </span>
               {completedModules['decision-framework'] && (
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.2 rounded font-mono font-medium flex items-center gap-1">
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-medium flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                   Completed
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400">
-              Confirm retention strategy playbook to unlock the What-If Scenario Simulator.
+            <p className="text-xs text-slate-400 mt-0.5">
+              Synthesizing Churn Risk and Customer Value into exactly ONE conclusive retention strategy.
             </p>
           </div>
         </div>
@@ -182,407 +198,301 @@ export const DecisionFrameworkTab: React.FC = () => {
           onClick={handleCompleteAndProceed}
           className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-orange-500/20 shrink-0"
         >
-          <span>Confirm Framework &amp; Proceed to Scenarios</span>
+          <span>Proceed to Scenario View</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Threshold Sliders Bar */}
-      <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
-          <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
-            <Sliders className="w-4 h-4 text-orange-400" />
-            <span>Interactive Decision Matrix Thresholds</span>
+      {/* 5A. Customer Assessment Summary (4 KPI Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* 1. Churn Risk */}
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              Churn Risk
+            </span>
+            <div className={`p-2 rounded-xl ${
+              churnRiskCategory === 'High' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
+            }`}>
+              {churnRiskCategory === 'High' ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+            </div>
+          </div>
+          <div className={`text-2xl font-black tracking-tight ${
+            churnRiskCategory === 'High' ? 'text-red-400' : 'text-emerald-400'
+          }`}>
+            {churnRiskCategory} Risk
           </div>
           <div className="text-[11px] text-slate-400">
-            Adjust coordinates to rebalance quadrant boundaries
+            Assigned from Churn Prediction
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
-          {/* Y-Axis: AI Churn Probability Boundary */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="font-semibold text-slate-300">
-                Y-Axis: AI Churn Risk Cutoff
-              </span>
-              <span className="font-mono text-orange-400 font-bold">
-                {(decisionThresholds.riskThreshold * 100).toFixed(0)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0.10"
-              max="0.90"
-              step="0.05"
-              value={decisionThresholds.riskThreshold}
-              onChange={(e) => updateDecisionThresholds({ riskThreshold: parseFloat(e.target.value) })}
-              className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-orange-500"
-            />
-            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-              <span>Low Risk (&lt; {(decisionThresholds.riskThreshold * 100).toFixed(0)}%)</span>
-              <span>High Risk (&ge; {(decisionThresholds.riskThreshold * 100).toFixed(0)}%)</span>
+        {/* 2. Customer Value Segment */}
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              Customer Value Segment
+            </span>
+            <div className={`p-2 rounded-xl ${
+              valueCategory === 'High' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700/30 text-slate-300'
+            }`}>
+              <Award className="w-4 h-4" />
             </div>
           </div>
+          <div className={`text-2xl font-black tracking-tight ${
+            valueCategory === 'High' ? 'text-emerald-400' : 'text-slate-200'
+          }`}>
+            {valueCategory} Value
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Tier: {customerValueSegment}
+          </div>
+        </div>
 
-          {/* X-Axis: Customer Value Boundary */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="font-semibold text-slate-300">
-                X-Axis: Customer Value Cutoff (Historical Proxy)
-              </span>
-              <span className="font-mono text-orange-400 font-bold">
-                {formatIDR(decisionThresholds.valueThreshold)}
-              </span>
+        {/* 3. Churn Probability */}
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              Churn Probability
+            </span>
+            <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400">
+              <TrendingUp className="w-4 h-4" />
             </div>
-            <input
-              type="range"
-              min="2000000"
-              max="25000000"
-              step="1000000"
-              value={decisionThresholds.valueThreshold}
-              onChange={(e) => updateDecisionThresholds({ valueThreshold: parseInt(e.target.value) })}
-              className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-orange-500"
-            />
-            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-              <span>Low Value (&lt; {formatIDR(decisionThresholds.valueThreshold)})</span>
-              <span>High Value (&ge; {formatIDR(decisionThresholds.valueThreshold)})</span>
+          </div>
+          <div className="text-2xl font-black font-mono text-white tracking-tight">
+            {(predictionResult.churn_probability * 100).toFixed(1)}%
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Calculated AI estimate
+          </div>
+        </div>
+
+        {/* 4. Estimated Customer Value */}
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              Estimated Customer Value
+            </span>
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+              <DollarSign className="w-4 h-4" />
             </div>
+          </div>
+          <div className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
+            {formatIDR(financials.estimatedCustomerValue)}
+          </div>
+          <div className="text-[11px] text-slate-400">
+            {financials.expectedRemainingMonths} mo expected horizon
           </div>
         </div>
       </div>
 
-      {/* Main Section: 2x2 Interactive Decision Matrix & Strategy Playbook */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: 2x2 Matrix Grid (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-orange-400" />
-              <span>2×2 Decision Matrix (Customer Value vs AI Churn Risk)</span>
+      {/* Decision Matrix Mapping Reference - Exactly ONE Active Cell Highlighted */}
+      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+          <div>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Layers className="w-3.5 h-3.5 text-orange-400" />
+              Strategic Decision Matrix Mapping
             </h4>
-            <span className="text-[11px] text-slate-400 font-mono">Click a quadrant to inspect</span>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Combines Churn Risk ({churnRiskCategory}) and Customer Value ({valueCategory}) to produce exactly ONE final decision.
+            </p>
           </div>
+          <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-1 rounded border border-slate-800">
+            Rule-Authoritative &bull; 4 Quadrants
+          </span>
+        </div>
 
-          <div className="relative p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-            <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2">
-              <span className="text-orange-400 font-mono">Y-AXIS: HIGH CHURN RISK (&ge;{(decisionThresholds.riskThreshold * 100).toFixed(0)}%)</span>
-              <span className="text-slate-500 font-mono">UPPER HALF</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3.5 min-h-[340px]">
-              {/* TOP-LEFT: Low Value + High Churn Risk -> Cost-Efficient Retention */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+          {matrixCells.map((cell) => {
+            const isSelected = cell.decision === exactFinalDecision;
+            return (
               <div
-                onClick={() => handleSelectQuadrant('high-risk-low-value')}
-                className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                  selectedQuadrantId === 'high-risk-low-value'
-                    ? 'bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/20 shadow-lg'
-                    : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+                key={cell.decision}
+                className={`p-3.5 rounded-xl border transition-all ${
+                  isSelected
+                    ? 'bg-slate-950 border-orange-500 ring-2 ring-orange-500/40 shadow-lg shadow-orange-500/10 relative overflow-hidden'
+                    : 'bg-slate-950/40 border-slate-800/60 opacity-40'
                 }`}
               >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300">
-                      Low Value &bull; High Risk
-                    </span>
-                    <span className="text-[10px] text-amber-400 font-bold">P1 High</span>
+                {isSelected && (
+                  <div className="absolute top-0 right-0 bg-orange-500 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg flex items-center gap-1 shadow-sm">
+                    <CheckCircle2 className="w-2.5 h-2.5" />
+                    Selected Decision
                   </div>
-                  <h5 className="text-sm font-bold text-amber-300">
-                    3. Cost-Efficient Retention
-                  </h5>
-                  <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">
-                    {quadrantConfigs['high-risk-low-value']?.recommendedAction}
-                  </p>
-                </div>
+                )}
 
-                <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                  <span className="text-amber-400 font-medium">Digital Automation</span>
-                  {activeQuadrantId === 'high-risk-low-value' && (
-                    <span className="bg-orange-500 text-slate-950 font-black px-1.5 py-0.2 rounded text-[9px]">
-                      ACTIVE PROFILE
-                    </span>
-                  )}
+                <div className="text-[10px] font-mono text-slate-400 uppercase">
+                  {cell.risk} Risk &times; {cell.value} Value
                 </div>
+                <div className={`text-sm font-bold mt-1 ${
+                  isSelected ? 'text-white font-extrabold' : 'text-slate-400'
+                }`}>
+                  {cell.decision}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">
+                  {cell.description}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Loading state during AI interpretation */}
+      {finalDecisionLoading && (
+        <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3">
+          <RefreshCw className="w-7 h-7 text-orange-400 animate-spin mx-auto" />
+          <h4 className="text-sm font-bold text-white">
+            Gemini AI is analyzing final strategic decision...
+          </h4>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            Generating executive business interpretation, strategic rationale, and tailored retention recommendations for {exactFinalDecision}.
+          </p>
+        </div>
+      )}
+
+      {/* 5B. ONE Final Strategic Decision Hero Card */}
+      {finalDecisionAnalysis && (
+        <div className={`p-6 rounded-2xl border shadow-xl space-y-6 ${
+          exactFinalDecision === 'Priority Retention'
+            ? 'bg-gradient-to-br from-slate-900 via-red-950/20 to-slate-900 border-red-500/40 shadow-red-950/30'
+            : exactFinalDecision === 'Cost-Efficient Retention'
+            ? 'bg-gradient-to-br from-slate-900 via-amber-950/20 to-slate-900 border-amber-500/40 shadow-amber-950/30'
+            : exactFinalDecision === 'Loyalty Enhancement'
+            ? 'bg-gradient-to-br from-slate-900 via-emerald-950/20 to-slate-900 border-emerald-500/40 shadow-emerald-950/30'
+            : 'bg-gradient-to-br from-slate-900 via-blue-950/20 to-slate-900 border-blue-500/40 shadow-blue-950/30'
+        }`}>
+          {/* Hero Decision Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-800">
+            <div className="flex items-center gap-4">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black shadow-inner shrink-0 ${
+                exactFinalDecision === 'Priority Retention'
+                  ? 'bg-red-500/20 border border-red-500/40 text-red-400'
+                  : exactFinalDecision === 'Cost-Efficient Retention'
+                  ? 'bg-amber-500/20 border border-amber-500/40 text-amber-400'
+                  : exactFinalDecision === 'Loyalty Enhancement'
+                  ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
+                  : 'bg-blue-500/20 border border-blue-500/40 text-blue-400'
+              }`}>
+                {exactFinalDecision === 'Priority Retention' ? (
+                  <ShieldAlert className="w-8 h-8" />
+                ) : exactFinalDecision === 'Cost-Efficient Retention' ? (
+                  <Zap className="w-8 h-8" />
+                ) : exactFinalDecision === 'Loyalty Enhancement' ? (
+                  <Award className="w-8 h-8" />
+                ) : (
+                  <ShieldCheck className="w-8 h-8" />
+                )}
               </div>
 
-              {/* TOP-RIGHT: High Value + High Churn Risk -> Priority Retention */}
-              <div
-                onClick={() => handleSelectQuadrant('high-risk-high-value')}
-                className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                  selectedQuadrantId === 'high-risk-high-value'
-                    ? 'bg-red-950/40 border-red-500 ring-2 ring-red-500/20 shadow-lg shadow-red-950/30'
-                    : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-red-500/20 text-red-300">
-                      High Value &bull; High Risk
-                    </span>
-                    <span className="text-[10px] text-red-400 font-bold">P0 Immediate</span>
-                  </div>
-                  <h5 className="text-sm font-bold text-red-300">
-                    1. Priority Retention
-                  </h5>
-                  <p className="text-[11px] text-slate-200 mt-1 line-clamp-2">
-                    {quadrantConfigs['high-risk-high-value']?.recommendedAction}
-                  </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Final Strategic Customer Decision
+                  </span>
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 font-bold uppercase">
+                    Authoritative Output
+                  </span>
                 </div>
-
-                <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                  <span className="text-red-400 font-medium">High-Touch Retention</span>
-                  {activeQuadrantId === 'high-risk-high-value' && (
-                    <span className="bg-orange-500 text-slate-950 font-black px-1.5 py-0.2 rounded text-[9px] animate-pulse">
-                      ACTIVE PROFILE
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* BOTTOM-LEFT: Low Value + Low Churn Risk -> Standard Engagement */}
-              <div
-                onClick={() => handleSelectQuadrant('low-risk-low-value')}
-                className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                  selectedQuadrantId === 'low-risk-low-value'
-                    ? 'bg-slate-900 border-slate-500 ring-2 ring-slate-500/20 shadow-lg'
-                    : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-semibold bg-slate-800 text-slate-300">
-                      Low Value &bull; Low Risk
-                    </span>
-                    <span className="text-[10px] text-slate-500">P3 Standard</span>
-                  </div>
-                  <h5 className="text-sm font-bold text-white">
-                    4. Standard Engagement
-                  </h5>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
-                    {quadrantConfigs['low-risk-low-value']?.recommendedAction}
-                  </p>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400 font-medium">Automated Efficiency</span>
-                  {activeQuadrantId === 'low-risk-low-value' && (
-                    <span className="bg-orange-500 text-slate-950 font-black px-1.5 py-0.2 rounded text-[9px]">
-                      ACTIVE PROFILE
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* BOTTOM-RIGHT: High Value + Low Churn Risk -> Loyalty Enhancement */}
-              <div
-                onClick={() => handleSelectQuadrant('low-risk-high-value')}
-                className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                  selectedQuadrantId === 'low-risk-high-value'
-                    ? 'bg-blue-950/40 border-blue-400 ring-2 ring-blue-500/20 shadow-lg'
-                    : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-blue-500/20 text-blue-300">
-                      High Value &bull; Low Risk
-                    </span>
-                    <span className="text-[10px] text-blue-400 font-bold">P2 Medium</span>
-                  </div>
-                  <h5 className="text-sm font-bold text-blue-300">
-                    2. Loyalty Enhancement
-                  </h5>
-                  <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">
-                    {quadrantConfigs['low-risk-high-value']?.recommendedAction}
-                  </p>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                  <span className="text-blue-400 font-medium">VIP Loyalty &amp; Perks</span>
-                  {activeQuadrantId === 'low-risk-high-value' && (
-                    <span className="bg-orange-500 text-slate-950 font-black px-1.5 py-0.2 rounded text-[9px]">
-                      ACTIVE PROFILE
-                    </span>
-                  )}
+                <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${
+                  exactFinalDecision === 'Priority Retention'
+                    ? 'text-red-400'
+                    : exactFinalDecision === 'Cost-Efficient Retention'
+                    ? 'text-amber-400'
+                    : exactFinalDecision === 'Loyalty Enhancement'
+                    ? 'text-emerald-400'
+                    : 'text-blue-400'
+                }`}>
+                  {exactFinalDecision}
+                </h2>
+                <div className="text-xs text-slate-400 font-medium mt-0.5">
+                  Assigned from: <strong className="text-white">{churnRiskCategory} Churn Risk</strong> &amp; <strong className="text-white">{valueCategory} Customer Value</strong>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 pt-1 border-t border-slate-800/80">
-              <span>Low Value (&lt; {formatIDR(decisionThresholds.valueThreshold)})</span>
-              <span className="text-orange-400 font-mono">X-AXIS: CUSTOMER VALUE &rarr;</span>
-              <span>High Value (&ge; {formatIDR(decisionThresholds.valueThreshold)})</span>
-            </div>
-          </div>
-
-          {/* Active Profile Status Pill */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div>
-              <div className="font-semibold text-white flex items-center gap-2">
-                <span>Active Customer Mapping:</span>
-                <span className="text-orange-400 font-bold font-mono">
-                  {quadrantConfigs[activeQuadrantId]?.title}
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <span className="text-[11px] font-mono text-slate-400">
+                Engine: <strong className="text-white">{finalDecisionAnalysis.engine || 'Gemini 3.8 Flash'}</strong>
+              </span>
+              {finalDecisionAnalysis.cachedAt && (
+                <span className="text-[10px] text-slate-400 font-mono bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                  Cached: {finalDecisionAnalysis.cachedAt}
                 </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                AI Churn Probability: <strong className="text-white">{(customerProb * 100).toFixed(1)}%</strong> &bull; Value Proxy: <strong className="text-white">{formatIDR(estimatedHistoricalRevenue)}</strong>
+              )}
+            </div>
+          </div>
+
+          {/* Primary Strategy Objective Banner */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-start gap-3">
+            <Target className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-mono text-orange-400 uppercase tracking-wider font-bold">
+                Primary Strategic Retention Objective
+              </span>
+              <p className="text-sm font-bold text-white leading-snug">
+                {finalDecisionAnalysis.primaryRetentionStrategy}
               </p>
             </div>
-            <button
-              onClick={() => setSelectedQuadrantId(activeQuadrantId)}
-              className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs shrink-0 self-start sm:self-center transition-colors cursor-pointer"
-            >
-              Focus Profile Quadrant
-            </button>
           </div>
-        </div>
 
-        {/* Right: Strategy Playbook (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div>
-                <span className="text-[10px] font-mono uppercase text-slate-400">
-                  Recommended Retention Strategy
-                </span>
-                <h4 className="text-base font-bold text-white">
-                  {activeConfig.title}
-                </h4>
+          {/* AI Business Interpretation & Strategic Rationale */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="p-5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                <span>AI Business Interpretation</span>
               </div>
-              <button
-                onClick={() => (isEditing ? saveEdits() : startEditing())}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {isEditing ? (
-                  <>
-                    <Save className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Save Playbook</span>
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="w-3.5 h-3.5 text-orange-400" />
-                    <span>Edit Strategy</span>
-                  </>
-                )}
-              </button>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {finalDecisionAnalysis.businessInterpretation}
+              </p>
             </div>
 
-            {isEditing ? (
-              <div className="space-y-4 text-xs">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Strategy Title</label>
-                  <input
-                    type="text"
-                    value={editForm.title}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Priority Level</label>
-                  <select
-                    value={editForm.priorityLevel}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, priorityLevel: e.target.value as any }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs cursor-pointer"
-                  >
-                    <option value="Immediate (P0)">Immediate (P0)</option>
-                    <option value="High (P1)">High (P1)</option>
-                    <option value="Medium (P2)">Medium (P2)</option>
-                    <option value="Standard (P3)">Standard (P3)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Recommended Action Summary</label>
-                  <textarea
-                    rows={3}
-                    value={editForm.recommendedAction}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, recommendedAction: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Business Rationale</label>
-                  <textarea
-                    rows={3}
-                    value={editForm.businessExplanation}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, businessExplanation: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Actionable Tactics (one per line)</label>
-                  <textarea
-                    rows={4}
-                    value={editForm.tacticsStr}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, tacticsStr: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-mono"
-                  />
-                </div>
+            <div className="p-5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+                <FileText className="w-3.5 h-3.5 text-blue-400" />
+                <span>Business Rationale</span>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Intervention Priority:</span>
-                  <span className={`px-2.5 py-1 rounded-full font-bold text-xs ${
-                    activeConfig.priorityLevel.includes('P0') ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
-                    activeConfig.priorityLevel.includes('P1') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
-                    activeConfig.priorityLevel.includes('P2') ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
-                    'bg-slate-800 text-slate-300'
-                  }`}>
-                    {activeConfig.priorityLevel}
-                  </span>
-                </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {finalDecisionAnalysis.businessRationale}
+              </p>
+            </div>
+          </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400">
-                    Recommended Strategy
-                  </span>
-                  <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                    {activeConfig.recommendedAction}
-                  </p>
-                </div>
+          {/* Supporting Recommended Actions */}
+          <div className="p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-orange-400" />
+                Supporting Recommended Actions
+              </h4>
+              <span className="text-[10px] font-mono text-slate-400">
+                Tailored to {customerProfile.contractType || 'contract'} &bull; {customerProfile.hasInternetService || 'Internet'}
+              </span>
+            </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Business Rationale
-                  </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {activeConfig.businessExplanation}
-                  </p>
-                </div>
-
-                <div className="space-y-2 pt-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Operational Tactics
-                  </span>
-                  <div className="space-y-1.5">
-                    {activeConfig.tactics.map((tactic, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-xs text-slate-300 bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">
-                        <Check className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
-                        <span>{tactic}</span>
-                      </div>
-                    ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {finalDecisionAnalysis.recommendedActions.map((action, idx) => (
+                <div 
+                  key={idx}
+                  className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5 hover:border-slate-700 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-orange-400 uppercase">
+                      Action 0{idx + 1}
+                    </span>
+                    <ArrowUpRight className="w-3 h-3 text-slate-500" />
                   </div>
+                  <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                    {action}
+                  </p>
                 </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={handleCompleteAndProceed}
-                    className="w-full py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-orange-500/20"
-                  >
-                    <span>Confirm Framework &amp; Proceed to Scenarios</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -38,25 +38,44 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
     const rawVal = input.value;
     const cursorIndex = input.selectionStart ?? rawVal.length;
 
-    // Count how many non-comma digits appeared before the cursor
-    const digitsBeforeCursor = rawVal.slice(0, cursorIndex).replace(/[^0-9]/g, '').length;
-
-    // Filter down to only pure digits
+    // Filter down to only pure digits (0-9)
     const cleanDigits = rawVal.replace(/[^0-9]/g, '');
 
+    // If cleared to empty, allow empty state
     if (cleanDigits === '') {
       onChange('');
       return;
     }
 
-    // Parse clean numeric value
+    // Strict check: if input resolves to 0 (e.g. user typed "0", "00", etc.), reject and keep previous value
     const numericVal = parseInt(cleanDigits, 10);
-    if (!isNaN(numericVal) && Number.isSafeInteger(numericVal)) {
+    if (isNaN(numericVal) || numericVal <= 0) {
+      if (inputRef.current) {
+        inputRef.current.value = displayValue;
+      }
+      return;
+    }
+
+    // Normalize leading zeros (e.g. "05" -> "5")
+    const normalizedDigits = numericVal.toString();
+
+    // Trigger update with strictly positive integer
+    if (Number.isSafeInteger(numericVal)) {
       onChange(numericVal);
     }
 
-    // Format new value to compute target cursor position
-    const formatted = cleanDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // Calculate cursor position after formatting with thousand separators
+    const rawBeforeCursor = rawVal.slice(0, cursorIndex);
+    const digitsBeforeCursor = rawBeforeCursor.replace(/[^0-9]/g, '').length;
+
+    // Adjust if leading zero was stripped at index 0
+    let adjustedDigitsBefore = digitsBeforeCursor;
+    if (cleanDigits.length > normalizedDigits.length && digitsBeforeCursor > 0) {
+      const zerosRemoved = cleanDigits.length - normalizedDigits.length;
+      adjustedDigitsBefore = Math.max(0, digitsBeforeCursor - zerosRemoved);
+    }
+
+    const formatted = normalizedDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     let newCursorPos = formatted.length;
     let digitsSeen = 0;
 
@@ -64,7 +83,7 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
       if (formatted[i] !== ',') {
         digitsSeen++;
       }
-      if (digitsSeen === digitsBeforeCursor) {
+      if (digitsSeen === adjustedDigitsBefore) {
         newCursorPos = i + 1;
         break;
       }
@@ -102,16 +121,33 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
       return;
     }
 
+    // Disallow typing '0' if the field is currently empty or if the entire current value is selected
+    const input = e.currentTarget;
+    const isAllSelected =
+      input.selectionStart === 0 && input.selectionEnd === input.value.length;
+    const isEmpty = input.value.length === 0;
+
+    if (e.key === '0' && (isEmpty || isAllSelected)) {
+      e.preventDefault();
+      return;
+    }
+
     // When backspacing immediately after a comma (e.g., "14,|000"), delete the digit before the comma
     if (e.key === 'Backspace') {
-      const input = e.currentTarget;
       const { selectionStart, selectionEnd, value: currentVal } = input;
       if (selectionStart !== null && selectionStart === selectionEnd && selectionStart > 0) {
         if (currentVal[selectionStart - 1] === ',') {
           e.preventDefault();
           const newRaw = currentVal.slice(0, selectionStart - 2) + currentVal.slice(selectionStart);
           const clean = newRaw.replace(/[^0-9]/g, '');
-          onChange(clean === '' ? '' : parseInt(clean, 10));
+          if (clean === '') {
+            onChange('');
+          } else {
+            const num = parseInt(clean, 10);
+            if (num > 0) {
+              onChange(num);
+            }
+          }
 
           requestAnimationFrame(() => {
             const targetPos = Math.max(0, selectionStart - 2);
@@ -133,7 +169,7 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
           badgePreview
         ) : (
           <span className="text-[11px] font-mono text-orange-400 font-bold">
-            {value !== '' ? (
+            {value !== '' && value !== undefined && value !== null ? (
               <>
                 {prefix && `${prefix} `}
                 {displayValue}

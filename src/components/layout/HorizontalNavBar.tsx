@@ -30,7 +30,7 @@ export const HorizontalNavBar: React.FC = () => {
   ];
 
   return (
-    <nav className="w-full bg-slate-900/90 border-b border-slate-800 backdrop-blur-md sticky top-[73px] z-20 shadow-sm">
+    <nav className="w-full bg-slate-900/90 border-b border-slate-800 backdrop-blur-md sticky top-[73px] z-20 shadow-sm print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-none select-none flex-nowrap min-w-full">
           {tabs.map((tab) => {
