@@ -47,12 +47,30 @@ export const ChurnPredictionTab: React.FC = () => {
   const handleFieldChange = (field: keyof CustomerProfile, val: any) => {
     updateCustomerField(field, val);
 
-    // Immediate feedback for numerical fields: clear error on valid positive integer entry
+    // Immediate feedback for Support Interactions: allows 0, accepts >= 0, rejects negative numbers
+    if (field === 'total_support_interactions') {
+      if (typeof val === 'number' && val >= 0 && Number.isInteger(val)) {
+        if (validationErrors.total_support_interactions) {
+          setValidationErrors(prev => {
+            const next = { ...prev };
+            delete next.total_support_interactions;
+            return next;
+          });
+        }
+      } else if (typeof val === 'number' && val < 0) {
+        setValidationErrors(prev => ({
+          ...prev,
+          total_support_interactions: 'Please enter a value greater than or equal to 0.'
+        }));
+      }
+      return;
+    }
+
+    // Immediate feedback for strictly positive numerical fields: clear error on valid positive integer entry
     if (
       field === 'tenureMonths' ||
       field === 'monthlyCharges' ||
-      field === 'age' ||
-      field === 'total_support_interactions'
+      field === 'age'
     ) {
       if (typeof val === 'number' && val > 0 && Number.isInteger(val)) {
         if (validationErrors[field]) {
@@ -99,7 +117,6 @@ export const ChurnPredictionTab: React.FC = () => {
       'tenureMonths',
       'monthlyCharges',
       'age',
-      'total_support_interactions',
     ];
 
     for (const f of numFields) {
@@ -113,6 +130,19 @@ export const ChurnPredictionTab: React.FC = () => {
         } else if (num <= 0) {
           errors[f] = 'Please enter a value greater than 0.';
         }
+      }
+    }
+
+    // Support Interactions validation: allows 0, accepts any integer >= 0, rejects negative numbers
+    const supportInteractionsVal = customerProfile.total_support_interactions;
+    if (supportInteractionsVal === '' || supportInteractionsVal === undefined || supportInteractionsVal === null) {
+      errors.total_support_interactions = 'This field is required.';
+    } else {
+      const num = Number(supportInteractionsVal);
+      if (isNaN(num) || !Number.isInteger(num)) {
+        errors.total_support_interactions = 'Only whole numbers are allowed.';
+      } else if (num < 0) {
+        errors.total_support_interactions = 'Please enter a value greater than or equal to 0.';
       }
     }
 
@@ -249,6 +279,7 @@ export const ChurnPredictionTab: React.FC = () => {
               label="Support Interactions"
               placeholder="e.g. 2"
               unit="ticket(s)"
+              allowZero={true}
               value={customerProfile.total_support_interactions}
               onChange={(val) => handleFieldChange('total_support_interactions', val)}
               error={validationErrors.total_support_interactions}

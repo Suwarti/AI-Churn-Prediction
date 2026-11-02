@@ -64,8 +64,8 @@ function validateCustomerPayload(data: any): { valid: boolean; errors: string[] 
   if (typeof data.age !== 'number' || isNaN(data.age) || data.age <= 0) {
     errors.push('age must be a positive number greater than 0.');
   }
-  if (typeof data.total_support_interactions !== 'number' || isNaN(data.total_support_interactions) || data.total_support_interactions <= 0) {
-    errors.push('total_support_interactions must be a positive integer greater than 0.');
+  if (typeof data.total_support_interactions !== 'number' || isNaN(data.total_support_interactions) || data.total_support_interactions < 0) {
+    errors.push('total_support_interactions must be a non-negative integer greater than or equal to 0.');
   }
   if (!VALID_YES_NO.includes(data.hasPhoneService)) {
     errors.push(`hasPhoneService must be one of: ${VALID_YES_NO.join(', ')}.`);

@@ -11,6 +11,7 @@ interface FormattedNumberInputProps {
   unit?: string;
   badgePreview?: React.ReactNode;
   className?: string;
+  allowZero?: boolean;
 }
 
 export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
@@ -24,6 +25,7 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
   unit,
   badgePreview,
   className = '',
+  allowZero = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,9 +49,9 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
       return;
     }
 
-    // Strict check: if input resolves to 0 (e.g. user typed "0", "00", etc.), reject and keep previous value
+    // Strict check: if input resolves to 0 (e.g. user typed "0", "00", etc.), reject and keep previous value unless allowZero is enabled
     const numericVal = parseInt(cleanDigits, 10);
-    if (isNaN(numericVal) || numericVal <= 0) {
+    if (isNaN(numericVal) || (allowZero ? numericVal < 0 : numericVal <= 0)) {
       if (inputRef.current) {
         inputRef.current.value = displayValue;
       }
@@ -121,13 +123,13 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
       return;
     }
 
-    // Disallow typing '0' if the field is currently empty or if the entire current value is selected
+    // Disallow typing '0' if the field is currently empty or if the entire current value is selected (unless allowZero is enabled)
     const input = e.currentTarget;
     const isAllSelected =
       input.selectionStart === 0 && input.selectionEnd === input.value.length;
     const isEmpty = input.value.length === 0;
 
-    if (e.key === '0' && (isEmpty || isAllSelected)) {
+    if (!allowZero && e.key === '0' && (isEmpty || isAllSelected)) {
       e.preventDefault();
       return;
     }
@@ -144,7 +146,7 @@ export const FormattedNumberInput: React.FC<FormattedNumberInputProps> = ({
             onChange('');
           } else {
             const num = parseInt(clean, 10);
-            if (num > 0) {
+            if (allowZero ? num >= 0 : num > 0) {
               onChange(num);
             }
           }
