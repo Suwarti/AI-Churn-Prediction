@@ -1,7 +1,6 @@
 {
-  "name": "AI Churn Prediction",
+  "name": "AI Churn Prediction Intelligence Platform",
   "description": "For Smarter Customer Retention Strategies - AI-powered Customer Intelligence and Decision Support Platform for telecommunications businesses.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
-
